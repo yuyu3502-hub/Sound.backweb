@@ -1,0 +1,147 @@
+.home-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-height) + 16px);
+}
+
+/* ヘッダー */
+.home-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(5, 5, 5, 0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 24px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ヘッダーをsticky幅いっぱいに出すためのwrapper */
+.home-header-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(5, 5, 5, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.home-header__logo {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.home-header__avatar-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.home-header__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-header__avatar-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* メインコンテンツ */
+.home-main {
+  flex: 1;
+  padding: 20px 24px 28px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* 投稿リスト: モバイルは1列、デスクトップは2列 */
+.home-post-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 768px) {
+  .home-post-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .home-main {
+    padding: 24px;
+  }
+}
+
+.home-post-list li {
+  cursor: pointer;
+}
+
+/* 状態表示（読み込み中・空・エラー） */
+.home-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 64px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.home-state__error-detail {
+  max-width: 520px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9ca3af;
+  word-break: break-word;
+}
+
+.home-retry-btn {
+  background: var(--accent);
+  border: none;
+  color: #050505;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* もっと見るボタン */
+.home-load-more {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.home-load-more:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -1,0 +1,121 @@
+.post-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.post-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1d1d1d;
+  transform: translateY(-2px);
+}
+
+.post-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.post-card__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.post-card__avatar-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.post-card__display-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-card__body {
+  font-size: 15px;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+  color: #f5f5f5;
+}
+
+/* 音源プレイヤー */
+.post-card__audio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.post-card__play-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: #050505;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.post-card__play-btn:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 0 1px rgba(108, 255, 164, 0.45),
+    0 8px 16px rgba(30, 215, 96, 0.28),
+    0 0 18px rgba(30, 215, 96, 0.35);
+}
+
+.post-card__play-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(108, 255, 164, 0.45),
+    0 8px 16px rgba(30, 215, 96, 0.28),
+    0 0 18px rgba(30, 215, 96, 0.35);
+}
+
+.post-card__play-btn:active {
+  transform: scale(1.08);
+  box-shadow:
+    0 0 0 1px rgba(144, 255, 188, 0.72),
+    0 0 14px rgba(30, 215, 96, 0.42),
+    0 0 26px rgba(30, 215, 96, 0.4);
+}
+
+.post-card__progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #2e2e2e;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.post-card__progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}

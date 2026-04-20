@@ -1,0 +1,57 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isAudio() {
+      return request.resource.contentType.matches('audio/.*');
+    }
+
+    // 投稿画像
+    match /posts/images/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // 投稿音源
+    match /posts/audio/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isAudio()
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // コメント画像
+    match /comments/images/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // アバター画像
+    match /users/avatars/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // 上記以外は拒否
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

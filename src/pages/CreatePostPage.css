@@ -1,0 +1,198 @@
+.create-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-height) + 16px);
+}
+
+.create-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.create-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.create-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.create-main {
+  flex: 1;
+  padding: 20px 24px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.create-required {
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.create-optional {
+  color: var(--text-secondary);
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* 本文 */
+.create-body-wrap {
+  position: relative;
+}
+
+.create-textarea {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 12px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+  line-height: 1.6;
+}
+
+.create-textarea:focus {
+  border-color: var(--accent);
+}
+
+.create-char-count {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.create-char-count--max {
+  color: var(--danger);
+}
+
+/* セレクト */
+.create-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 15px;
+  padding: 10px 12px;
+  outline: none;
+  appearance: none;
+  transition: border-color 0.15s;
+}
+
+.create-select:focus {
+  border-color: var(--accent);
+}
+
+/* ファイル選択ボタン */
+.create-file-btn {
+  background: var(--bg-input);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 12px;
+  text-align: center;
+}
+
+/* 画像プレビュー */
+.create-image-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-image-preview img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+/* 音源プレビュー */
+.create-audio-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.create-audio-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 削除ボタン */
+.create-remove-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* エラー */
+.create-error {
+  font-size: 13px;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* 投稿ボタン */
+.create-submit {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 14px;
+  margin-top: 16px;
+  transition: opacity 0.15s;
+}
+
+.create-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
