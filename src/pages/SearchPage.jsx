@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  collection, query, where, getDocs, orderBy,
+  collection, query, where, getDocs, orderBy, limit,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PostCard } from '../components/PostCard';
 import { BottomNav } from '../components/BottomNav';
+import { isSpecialSkinUserId } from '../utils/specialAvatar';
 import './SearchPage.css';
 
 const WORRY_GENRES = [
@@ -16,6 +17,12 @@ const MUSIC_GENRES = [
   'J-POP', 'Rock', 'Hip-Hop', 'EDM',
   'Lo-fi', 'Ballad', 'Anime', 'その他',
 ];
+const DAW_OPTIONS = [
+  'Logic Pro', 'Ableton Live', 'FL Studio', 'Cubase',
+  'Studio One', 'Pro Tools', 'GarageBand', 'Reaper',
+  'Cakewalk', 'その他',
+];
+const SEARCH_POSTS_LIMIT = 50;
 
 export function SearchPage() {
   const navigate = useNavigate();
@@ -32,6 +39,7 @@ export function SearchPage() {
   const [keyword, setKeyword] = useState('');
   const [worryGenre, setWorryGenre] = useState('');
   const [musicGenre, setMusicGenre] = useState('');
+  const [daw, setDaw] = useState('');
   const [postResults, setPostResults] = useState([]);
   const [postLoading, setPostLoading] = useState(false);
   const [postSearched, setPostSearched] = useState(false);
@@ -62,7 +70,7 @@ export function SearchPage() {
   /* ---- 投稿検索 ---- */
   const handlePostSearch = async () => {
     const kw = keyword.trim();
-    if (!kw && !worryGenre && !musicGenre) return;
+    if (!kw && !worryGenre && !musicGenre && !daw) return;
     if (kw && kw.length < 2) return;
 
     setPostLoading(true);
@@ -70,29 +78,11 @@ export function SearchPage() {
     setPostResults([]);
 
     try {
-      let q;
-      if (worryGenre && musicGenre) {
-        q = query(
-          collection(db, 'posts'),
-          where('worryGenre', '==', worryGenre),
-          where('musicGenre', '==', musicGenre),
-          orderBy('createdAt', 'desc'),
-        );
-      } else if (worryGenre) {
-        q = query(
-          collection(db, 'posts'),
-          where('worryGenre', '==', worryGenre),
-          orderBy('createdAt', 'desc'),
-        );
-      } else if (musicGenre) {
-        q = query(
-          collection(db, 'posts'),
-          where('musicGenre', '==', musicGenre),
-          orderBy('createdAt', 'desc'),
-        );
-      } else {
-        q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
-      }
+      const constraints = [orderBy('createdAt', 'desc'), limit(SEARCH_POSTS_LIMIT)];
+      if (worryGenre) constraints.unshift(where('worryGenre', '==', worryGenre));
+      if (musicGenre) constraints.unshift(where('musicGenre', '==', musicGenre));
+      if (daw) constraints.unshift(where('daw', '==', daw));
+      const q = query(collection(db, 'posts'), ...constraints);
 
       const snap = await getDocs(q);
       let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -116,7 +106,9 @@ export function SearchPage() {
   return (
     <div className="search-page">
       <header className="search-header">
-        <h1 className="search-title">検索</h1>
+        <div className="search-header__inner">
+          <h1 className="search-title">Search</h1>
+        </div>
       </header>
 
       {/* タブ */}
@@ -167,13 +159,15 @@ export function SearchPage() {
                 className="search-user-card"
                 onClick={() => navigate(`/users/${userResult.uid}`)}
               >
-                {userResult.photoUrl ? (
-                  <img className="search-user-avatar" src={userResult.photoUrl} alt="" />
-                ) : (
-                  <div className="search-user-avatar-fallback">
-                    {userResult.displayName?.[0]?.toUpperCase() ?? '?'}
-                  </div>
-                )}
+                <span className={`search-user-avatar-shell ${isSpecialSkinUserId(userResult.userId) ? 'search-user-avatar-shell--special' : ''}`}>
+                  {userResult.photoUrl ? (
+                    <img className="search-user-avatar" src={userResult.photoUrl} alt="" decoding="sync" fetchPriority="high" />
+                  ) : (
+                    <div className="search-user-avatar-fallback">
+                      {userResult.displayName?.[0]?.toUpperCase() ?? '?'}
+                    </div>
+                  )}
+                </span>
                 <div className="search-user-info">
                   <span className="search-user-name">{userResult.displayName}</span>
                   <span className="search-user-id">@{userResult.userId}</span>
@@ -216,6 +210,16 @@ export function SearchPage() {
                 <option value="">音楽ジャンル（全て）</option>
                 {MUSIC_GENRES.map((g) => (
                   <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+              <select
+                className="search-select"
+                value={daw}
+                onChange={(e) => setDaw(e.target.value)}
+              >
+                <option value="">DAW（全て）</option>
+                {DAW_OPTIONS.map((dawOption) => (
+                  <option key={dawOption} value={dawOption}>{dawOption}</option>
                 ))}
               </select>
             </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
-  collection, query, where, getDocs,
+  collection, query, where, getDocs, limit, getCountFromServer,
   doc, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -10,10 +10,18 @@ import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import './MyPage.css';
 
+const MY_POSTS_LIMIT = 60;
+
 function formatDate(timestamp) {
   if (!timestamp) return '';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+}
+
+function isEdited(createdAt, updatedAt) {
+  const created = createdAt?.toMillis?.() ?? 0;
+  const updated = updatedAt?.toMillis?.() ?? 0;
+  return updated > created + 60 * 1000;
 }
 
 export function MyPage() {
@@ -22,6 +30,7 @@ export function MyPage() {
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bestAnswerCount, setBestAnswerCount] = useState(0);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [logoutError, setLogoutError] = useState('');
 
@@ -38,11 +47,21 @@ export function MyPage() {
   const fetchMyPosts = async () => {
     setLoading(true);
     try {
-      const q = query(
+      const postsQuery = query(
         collection(db, 'posts'),
-        where('authorUid', '==', firebaseUser.uid)
+        where('authorUid', '==', firebaseUser.uid),
+        limit(MY_POSTS_LIMIT)
       );
-      const snapshot = await getDocs(q);
+      const bestAnswersQuery = query(
+        collection(db, 'comments'),
+        where('authorUid', '==', firebaseUser.uid),
+        where('isBestAnswer', '==', true)
+      );
+
+      const [snapshot, bestAnswersSnapshot] = await Promise.all([
+        getDocs(postsQuery),
+        getCountFromServer(bestAnswersQuery),
+      ]);
       const docs = snapshot.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .sort((a, b) => {
@@ -51,6 +70,7 @@ export function MyPage() {
           return bTime - aTime;
         });
       setPosts(docs);
+      setBestAnswerCount(bestAnswersSnapshot.data().count ?? 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -108,7 +128,13 @@ export function MyPage() {
         <section className="mypage-profile">
           <div className="mypage-profile__avatar-wrap">
             {userData?.photoUrl ? (
-              <img className="mypage-profile__avatar" src={userData.photoUrl} alt="" />
+              <img
+                className="mypage-profile__avatar"
+                src={userData.photoUrl}
+                alt=""
+                decoding="sync"
+                fetchPriority="high"
+              />
             ) : (
               <div className="mypage-profile__avatar-fallback">{initial}</div>
             )}
@@ -118,6 +144,11 @@ export function MyPage() {
             <p className="mypage-profile__name">{userData?.displayName ?? ''}</p>
             {userData?.bio && (
               <p className="mypage-profile__bio">{userData.bio}</p>
+            )}
+            {bestAnswerCount > 0 && (
+              <span className="mypage-profile__best-badge">
+                ★ ベストアンサー {bestAnswerCount}回
+              </span>
             )}
           </div>
           <button
@@ -154,6 +185,7 @@ export function MyPage() {
                       key={post.id}
                       post={post}
                       onCardClick={() => navigate(`/post/${post.id}`)}
+                      onEdit={() => navigate(`/post/${post.id}/edit`)}
                       onDelete={() => handleDeletePost(post.id)}
                     />
                   ))}
@@ -171,6 +203,7 @@ export function MyPage() {
                       key={post.id}
                       post={post}
                       onCardClick={() => navigate(`/post/${post.id}`)}
+                      onEdit={() => navigate(`/post/${post.id}/edit`)}
                       onDelete={() => handleDeletePost(post.id)}
                     />
                   ))}
@@ -183,14 +216,27 @@ export function MyPage() {
 
       <BottomNav active="" />
 
-      <button className="fab" onClick={() => navigate('/create')} aria-label="投稿する">
-        +
+      <button className="fab" onClick={() => navigate(firebaseUser ? '/create' : '/auth')} aria-label="投稿する">
+        <span className="fab__label">悩みを投稿</span>
       </button>
     </div>
   );
 }
 
-function PostCardItem({ post, onCardClick, onDelete }) {
+function PostCardItem({ post, onCardClick, onEdit, onDelete }) {
+  const hasAllGenres = Boolean(post.worryGenre && post.musicGenre && post.daw);
+  const postIsEdited = isEdited(post.createdAt, post.updatedAt);
+
+  const handleDeleteTap = (e) => {
+    e.stopPropagation();
+    onDelete();
+  };
+
+  const handleEditTap = (e) => {
+    e.stopPropagation();
+    onEdit();
+  };
+
   return (
     <li className="mypage-post-card">
       <button className="mypage-post-card__body-area" onClick={onCardClick}>
@@ -198,6 +244,9 @@ function PostCardItem({ post, onCardClick, onDelete }) {
           <span className="mypage-post-card__date">
             {formatDate(post.createdAt)}
           </span>
+          {postIsEdited && (
+            <span className="mypage-post-card__edited-badge">編集済み</span>
+          )}
           {post.isSolved && (
             <span className="mypage-post-card__badge">解決済み</span>
           )}
@@ -206,13 +255,33 @@ function PostCardItem({ post, onCardClick, onDelete }) {
           )}
         </div>
         <p className="mypage-post-card__text">{post.body}</p>
+        {hasAllGenres && (
+          <div className="mypage-post-card__tags">
+            <span className="mypage-post-card__tag">{post.worryGenre}</span>
+            <span className="mypage-post-card__tag">{post.musicGenre}</span>
+            <span className="mypage-post-card__tag">{post.daw}</span>
+          </div>
+        )}
         {post.imageUrl && (
-          <img className="mypage-post-card__thumb" src={post.imageUrl} alt="" />
+          <img className="mypage-post-card__thumb" src={post.imageUrl} alt="" loading="lazy" decoding="async" />
         )}
       </button>
       <button
+        type="button"
+        className="mypage-post-card__edit-btn"
+        onClick={handleEditTap}
+        onPointerUp={handleEditTap}
+        onPointerDown={(e) => e.stopPropagation()}
+        aria-label="投稿を編集"
+      >
+        ✏️
+      </button>
+      <button
+        type="button"
         className="mypage-post-card__delete-btn"
-        onClick={onDelete}
+        onClick={handleDeleteTap}
+        onPointerUp={handleDeleteTap}
+        onPointerDown={(e) => e.stopPropagation()}
         aria-label="投稿を削除"
       >
         🗑

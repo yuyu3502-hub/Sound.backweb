@@ -13,12 +13,17 @@ service firebase.storage {
       return request.resource.contentType.matches('audio/.*');
     }
 
+    function isCleanFileName(fileName) {
+      return !fileName.matches('.*(死ね|殺す|レイプ|暴行|児童ポルノ|自殺しろ|porn|Porn|PORN|nude|Nude|NUDE|sex|Sex|SEX|gore|Gore|GORE|violent|Violent|VIOLENT|ヌード|グロ|死体).*');
+    }
+
     // 投稿画像
     match /posts/images/{uid}/{fileName} {
       allow read: if true;
       allow write: if isSignedIn()
         && request.auth.uid == uid
         && isImage()
+        && isCleanFileName(fileName)
         && request.resource.size < 5 * 1024 * 1024;
     }
 
@@ -37,6 +42,7 @@ service firebase.storage {
       allow write: if isSignedIn()
         && request.auth.uid == uid
         && isImage()
+        && isCleanFileName(fileName)
         && request.resource.size < 5 * 1024 * 1024;
     }
 
@@ -46,6 +52,7 @@ service firebase.storage {
       allow write: if isSignedIn()
         && request.auth.uid == uid
         && isImage()
+        && isCleanFileName(fileName)
         && request.resource.size < 5 * 1024 * 1024;
     }
 

@@ -57,6 +57,10 @@ export function BottomNav({ active, onHomeClick }) {
     navigate('/notifications');
   };
 
+  const handleRanking = () => {
+    navigate('/ranking');
+  };
+
   return (
     <nav className="bottom-nav">
       <div className="bottom-nav__inner">
@@ -84,6 +88,19 @@ export function BottomNav({ active, onHomeClick }) {
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         <span>検索</span>
+      </button>
+
+      <button
+        className={`bottom-nav__btn ${active === 'ranking' ? 'bottom-nav__btn--active' : ''}`}
+        onClick={handleRanking}
+        aria-label="ランキング"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 20V10" />
+          <path d="M12 20V4" />
+          <path d="M6 20v-6" />
+        </svg>
+        <span>ランク</span>
       </button>
 
       <button

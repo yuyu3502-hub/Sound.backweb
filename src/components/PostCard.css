@@ -28,6 +28,43 @@
   flex-shrink: 0;
 }
 
+.post-card__avatar-shell {
+  position: relative;
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.post-card__avatar-shell--special::before,
+.post-card__avatar-shell--special::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #fff;
+  top: -4px;
+  z-index: 0;
+}
+
+.post-card__avatar-shell--special::before {
+  left: 2px;
+}
+
+.post-card__avatar-shell--special::after {
+  right: 2px;
+}
+
+.post-card__avatar-shell--special .post-card__avatar,
+.post-card__avatar-shell--special .post-card__avatar-fallback {
+  position: relative;
+  z-index: 1;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
 .post-card__avatar-fallback {
   width: 40px;
   height: 40px;
@@ -50,12 +87,42 @@
   white-space: nowrap;
 }
 
+.post-card__solved-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ef2c1;
+  border: 1px solid rgba(30, 215, 96, 0.45);
+  background: rgba(30, 215, 96, 0.12);
+  flex-shrink: 0;
+}
+
 .post-card__body {
   font-size: 15px;
   line-height: 1.6;
   word-break: break-word;
   white-space: pre-wrap;
   color: #f5f5f5;
+}
+
+.post-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.post-card__tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 /* 音源プレイヤー */
@@ -66,6 +133,31 @@
   margin-top: 12px;
 }
 
+.post-card__duration {
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.82);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.post-card__focus-chip {
+  border: 1px solid rgba(30, 215, 96, 0.45);
+  background: rgba(30, 215, 96, 0.12);
+  color: #9ef2c1;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.post-card__focus-chip:hover {
+  background: rgba(30, 215, 96, 0.2);
+}
+
 .post-card__play-btn {
   width: 36px;
   height: 36px;
@@ -73,12 +165,31 @@
   background: var(--accent);
   border: none;
   color: #050505;
-  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.post-card__play-icon {
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+  margin-left: 2px;
+}
+
+.post-card__play-btn.is-playing .post-card__play-icon {
+  width: 10px;
+  height: 12px;
+  border: none;
+  margin-left: 0;
+  background:
+    linear-gradient(90deg, currentColor 0 36%, transparent 36% 64%, currentColor 64% 100%);
+  border-radius: 1px;
 }
 
 .post-card__play-btn:hover {
@@ -108,14 +219,45 @@
 .post-card__progress-bar {
   flex: 1;
   height: 6px;
+  border-radius: 3px;
+  overflow: visible;
+  cursor: pointer;
+  position: relative;
+  padding: 8px 0;
+  margin: -8px 0;
+  box-sizing: content-box;
+  background: transparent;
+}
+
+.post-card__progress-bar::before {
+  content: '';
+  position: absolute;
+  inset: 8px 0;
   background: #2e2e2e;
-  border-radius: 2px;
-  overflow: hidden;
+  border-radius: 3px;
+  pointer-events: none;
 }
 
 .post-card__progress-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
+  position: absolute;
+  top: 8px;
+  left: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #1ed760, #6cffa8);
+  border-radius: 3px;
   transition: width 0.1s linear;
+  pointer-events: none;
+}
+
+.post-card__progress-bar.is-playing .post-card__progress-fill {
+  box-shadow:
+    0 0 6px rgba(30, 215, 96, 0.8),
+    0 0 14px rgba(30, 215, 96, 0.55),
+    0 0 28px rgba(30, 215, 96, 0.3);
+}
+
+.post-card__progress-bar:hover .post-card__progress-fill {
+  box-shadow:
+    0 0 8px rgba(30, 215, 96, 0.9),
+    0 0 18px rgba(30, 215, 96, 0.6);
 }

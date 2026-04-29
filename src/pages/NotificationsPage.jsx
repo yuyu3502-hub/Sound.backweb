@@ -5,6 +5,8 @@ import {
   doc,
   getDocs,
   query,
+  orderBy,
+  limit,
   serverTimestamp,
   updateDoc,
   where,
@@ -15,6 +17,12 @@ import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { getNotificationMessage } from '../utils/notifications';
 import './NotificationsPage.css';
+
+const NOTIFICATIONS_LIMIT = 80;
+const OPERATOR_MESSAGE = {
+  title: '運営より',
+  body: 'Sound.backをご利用頂き、本当にありがとうございます。\nこのアプリでは、音楽制作で悩んだ際に安心して相談できる場所づくりを目指しています。\nこれからも機能の追加や修正に取り組んでいきますので、引き続きよろしくお願いします。',
+};
 
 function formatDate(timestamp) {
   if (!timestamp) return '';
@@ -50,16 +58,12 @@ export function NotificationsPage() {
     try {
       const q = query(
         collection(db, 'notifications'),
-        where('userUid', '==', firebaseUser.uid)
+        where('userUid', '==', firebaseUser.uid),
+        orderBy('createdAt', 'desc'),
+        limit(NOTIFICATIONS_LIMIT)
       );
       const snapshot = await getDocs(q);
-      const docs = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => {
-          const aTime = a.createdAt?.toMillis?.() ?? 0;
-          const bTime = b.createdAt?.toMillis?.() ?? 0;
-          return bTime - aTime;
-        });
+      const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setNotifications(docs);
 
       const unreadDocs = snapshot.docs.filter((d) => !d.data().isRead);
@@ -100,17 +104,25 @@ export function NotificationsPage() {
   return (
     <div className="notifications-page">
       <header className="notifications-header">
-        <button className="notifications-back-btn" onClick={() => navigate(-1)}>
-          ← 戻る
-        </button>
-        <h1 className="notifications-title">通知</h1>
+        <div className="notifications-header__inner">
+          <h1 className="notifications-title">Notifications</h1>
+          <button className="notifications-back-btn" onClick={() => navigate(-1)}>
+            ← 戻る
+          </button>
+        </div>
       </header>
 
       <main className="notifications-main">
+        <section className="notifications-operator" aria-label="運営メッセージ">
+          <span className="notifications-operator__badge">運営メッセージ</span>
+          <h2 className="notifications-operator__title">{OPERATOR_MESSAGE.title}</h2>
+          <p className="notifications-operator__body">{OPERATOR_MESSAGE.body}</p>
+        </section>
+
         {loading ? (
           <p className="notifications-state">読み込み中...</p>
         ) : notifications.length === 0 ? (
-          <p className="notifications-state">通知はまだありません。</p>
+          <p className="notifications-state">ほかの通知はまだありません。</p>
         ) : (
           <ul className="notifications-list">
             {notifications.map((notification) => (

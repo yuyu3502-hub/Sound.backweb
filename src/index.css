@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap');
 
-/* ===== SoundBack グローバルスタイル ===== */
+/* ===== Sound.back グローバルスタイル ===== */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -66,14 +66,13 @@ ul {
   position: fixed;
   bottom: calc(var(--nav-height) + 20px);
   right: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+  height: 52px;
+  min-width: 56px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   border: none;
   color: #050505;
-  font-size: 28px;
-  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,22 +84,11 @@ ul {
   isolation: isolate;
 }
 
-.fab::before,
 .fab::after {
   content: '';
   position: absolute;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   pointer-events: none;
-}
-
-.fab::before {
-  inset: 6px;
-  border: 1px solid rgba(225, 255, 237, 0.85);
-  box-shadow:
-    inset 0 0 10px rgba(227, 255, 240, 0.6),
-    0 0 10px rgba(154, 255, 197, 0.34);
-  opacity: 0;
-  transition: opacity 0.18s ease;
 }
 
 .fab::after {
@@ -135,10 +123,13 @@ ul {
   box-shadow: 0 0 18px rgba(30, 215, 96, 0.36);
 }
 
-.fab:hover::before,
-.fab:focus-visible::before,
-.fab:active::before {
-  opacity: 1;
+.fab__label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
 }
+
+
 
 /* ===== END ===== */

@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  collection, query, where, orderBy, getDocs, doc, getDoc,
+  collection, query, where, orderBy, getDocs, doc, getDoc, limit, getCountFromServer,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PostCard } from '../components/PostCard';
 import { BottomNav } from '../components/BottomNav';
+import { isSpecialSkinUserId } from '../utils/specialAvatar';
 import './UserPage.css';
+
+const USER_POSTS_LIMIT = 60;
 
 function formatDate(timestamp) {
   if (!timestamp) return '';
@@ -20,6 +23,7 @@ export function UserPage() {
 
   const [userData, setUserData] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [bestAnswerCount, setBestAnswerCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [playingId, setPlayingId] = useState(null);
@@ -42,14 +46,25 @@ export function UserPage() {
       setUserData({ uid, ...userSnap.data() });
 
       // 投稿一覧
-      const q = query(
+      const postsQuery = query(
         collection(db, 'posts'),
         where('authorUid', '==', uid),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(USER_POSTS_LIMIT)
       );
-      const snap = await getDocs(q);
+      const bestAnswersQuery = query(
+        collection(db, 'comments'),
+        where('authorUid', '==', uid),
+        where('isBestAnswer', '==', true)
+      );
+
+      const [snap, bestAnswersSnapshot] = await Promise.all([
+        getDocs(postsQuery),
+        getCountFromServer(bestAnswersQuery),
+      ]);
       const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setPosts(docs);
+      setBestAnswerCount(bestAnswersSnapshot.data().count ?? 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -82,6 +97,7 @@ export function UserPage() {
   }
 
   const initial = userData?.displayName?.[0]?.toUpperCase() ?? '?';
+  const isSpecialUser = isSpecialSkinUserId(userData?.userId);
 
   return (
     <div className="user-page">
@@ -93,9 +109,15 @@ export function UserPage() {
       <main className="user-page-main">
         {/* プロフィールエリア */}
         <section className="user-profile">
-          <div className="user-profile__avatar-wrap">
+          <div className={`user-profile__avatar-wrap ${isSpecialUser ? 'user-profile__avatar-wrap--special' : ''}`}>
             {userData?.photoUrl ? (
-              <img className="user-profile__avatar" src={userData.photoUrl} alt="" />
+              <img
+                className="user-profile__avatar"
+                src={userData.photoUrl}
+                alt=""
+                decoding="sync"
+                fetchPriority="high"
+              />
             ) : (
               <div className="user-profile__avatar-fallback">{initial}</div>
             )}
@@ -105,6 +127,11 @@ export function UserPage() {
             <p className="user-profile__name">{userData?.displayName ?? '---'}</p>
             {userData?.bio && (
               <p className="user-profile__bio">{userData.bio}</p>
+            )}
+            {bestAnswerCount > 0 && (
+              <span className="user-profile__best-badge">
+                ★ ベストアンサー {bestAnswerCount}回
+              </span>
             )}
           </div>
         </section>

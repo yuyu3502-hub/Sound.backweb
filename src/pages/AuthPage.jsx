@@ -138,7 +138,11 @@ export function AuthPage() {
         <button className="auth-back-btn" onClick={() => navigate('/')}>
           ← ホームへ
         </button>
-        <h1 className="auth-logo">SoundBack</h1>
+        <h1 className="auth-logo" aria-label="Sound.back">
+          <span className="auth-logo-main">Sound</span>
+          <span className="auth-logo-dot">.</span>
+          <span className="auth-logo-sub">back</span>
+        </h1>
       </header>
 
       <main className="auth-main">

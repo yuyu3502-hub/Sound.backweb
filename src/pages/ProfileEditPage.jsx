@@ -11,6 +11,65 @@ import { BottomNav } from '../components/BottomNav';
 import './ProfileEditPage.css';
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_MAX_SIZE = 160;
+const AVATAR_QUALITY = 0.6;
+
+function readImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
+    image.src = dataUrl;
+  });
+}
+
+async function compressAvatarImage(file) {
+  const dataUrl = await readImageFile(file);
+  const image = await loadImage(dataUrl);
+
+  const scale = Math.min(1, AVATAR_MAX_SIZE / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('画像の圧縮に失敗しました。');
+  }
+
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (value) => {
+        if (value) {
+          resolve(value);
+          return;
+        }
+        reject(new Error('画像の圧縮に失敗しました。'));
+      },
+      'image/webp',
+      AVATAR_QUALITY
+    );
+  });
+
+  const fileBaseName = file.name.replace(/\.[^.]+$/, '') || 'avatar';
+  return new File([blob], `${fileBaseName}.webp`, { type: 'image/webp' });
+}
 
 export function ProfileEditPage() {
   const { firebaseUser, userData, setUserData, isLoading } = useAuth();
@@ -43,7 +102,7 @@ export function ProfileEditPage() {
   if (isLoading) return null;
   if (!firebaseUser) return null;
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
@@ -52,10 +111,16 @@ export function ProfileEditPage() {
       e.target.value = '';
       return;
     }
-    setError('');
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    setRemovePhoto(false);
+    try {
+      const optimizedFile = await compressAvatarImage(file);
+      setError('');
+      setImageFile(optimizedFile);
+      setImagePreview(URL.createObjectURL(optimizedFile));
+      setRemovePhoto(false);
+    } catch {
+      setError('画像の圧縮に失敗しました。別の画像でお試しください。');
+      e.target.value = '';
+    }
   };
 
   const handleImageRemove = () => {

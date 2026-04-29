@@ -13,6 +13,28 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/posts/$(postId));
     }
 
+    function hasBlockedTerm(value) {
+      return value.matches('.*(死ね|殺す|レイプ|暴行|児童ポルノ|自殺しろ|porn|Porn|PORN|nude|Nude|NUDE|sex|Sex|SEX|gore|Gore|GORE|violent|Violent|VIOLENT).*');
+    }
+
+    function isCleanOptionalString(value) {
+      return value == null || (value is string && !hasBlockedTerm(value));
+    }
+
+    function isCleanPostBody() {
+      return request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && !hasBlockedTerm(request.resource.data.body)
+        && isCleanOptionalString(request.resource.data.imageUrl);
+    }
+
+    function isCleanCommentBody() {
+      return request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && !hasBlockedTerm(request.resource.data.body)
+        && isCleanOptionalString(request.resource.data.imageUrl);
+    }
+
     // users: 公開プロフィールは読み取り可。作成/更新は本人のみ。
     match /users/{uid} {
       allow read: if true;
@@ -28,11 +50,13 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if isSignedIn()
-        && request.resource.data.authorUid == request.auth.uid;
+        && request.resource.data.authorUid == request.auth.uid
+        && isCleanPostBody();
 
       allow update: if isSignedIn()
         && resource.data.authorUid == request.auth.uid
-        && request.resource.data.authorUid == resource.data.authorUid;
+        && request.resource.data.authorUid == resource.data.authorUid
+        && isCleanPostBody();
 
       allow delete: if isSignedIn()
         && resource.data.authorUid == request.auth.uid;
@@ -46,13 +70,15 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && request.resource.data.authorUid == request.auth.uid
-        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId));
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+        && isCleanCommentBody();
 
       allow update: if isSignedIn() && (
         // コメント作成者の通常更新
         (resource.data.authorUid == request.auth.uid
           && request.resource.data.authorUid == resource.data.authorUid
-          && request.resource.data.postId == resource.data.postId)
+          && request.resource.data.postId == resource.data.postId
+          && isCleanCommentBody())
         ||
         // 投稿者がベストアンサー指定
         (
@@ -91,6 +117,12 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead', 'updatedAt']);
 
       allow delete: if false;
+    }
+
+    // rankingBestAnswers: 読み取り公開。クライアント書き込みは禁止。
+    match /rankingBestAnswers/{uid} {
+      allow read: if true;
+      allow create, update, delete: if false;
     }
   }
 }

@@ -12,7 +12,37 @@
   background: rgba(5, 5, 5, 0.88);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 16px 24px 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.search-header::before,
+.search-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.search-header::before {
+  top: 0;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+}
+
+.search-header::after {
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
+}
+
+.search-header__inner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 12px;
+  box-sizing: border-box;
 }
 
 .search-title {
@@ -107,12 +137,18 @@
 
 /* セレクト */
 .search-selects {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
+.search-selects .search-select:last-child {
+  grid-column: 1 / -1;
+}
+
 .search-select {
-  flex: 1;
+  width: 100%;
+  min-width: 0;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -131,7 +167,9 @@
   border-radius: var(--radius-pill);
   color: #050505;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
   padding: 12px 20px;
   white-space: nowrap;
   transition: opacity 0.15s, transform 0.15s;
@@ -189,6 +227,43 @@
   flex-shrink: 0;
 }
 
+.search-user-avatar-shell {
+  position: relative;
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.search-user-avatar-shell--special::before,
+.search-user-avatar-shell--special::after {
+  content: '';
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #fff;
+  top: -5px;
+  z-index: 0;
+}
+
+.search-user-avatar-shell--special::before {
+  left: 3px;
+}
+
+.search-user-avatar-shell--special::after {
+  right: 3px;
+}
+
+.search-user-avatar-shell--special .search-user-avatar,
+.search-user-avatar-shell--special .search-user-avatar-fallback {
+  position: relative;
+  z-index: 1;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
 .search-user-avatar-fallback {
   width: 48px;
   height: 48px;
@@ -239,6 +314,14 @@
 }
 
 @media (min-width: 768px) {
+  .search-selects {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .search-selects .search-select:last-child {
+    grid-column: auto;
+  }
+
   .search-post-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

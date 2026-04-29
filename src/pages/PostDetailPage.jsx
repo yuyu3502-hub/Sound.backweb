@@ -2,16 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   doc, getDoc, collection, query, where, orderBy,
-  getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp,
+  getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, limit, writeBatch, documentId,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { createNotification, NOTIFICATION_TYPES } from '../utils/notifications';
+import { isSpecialSkinUserId } from '../utils/specialAvatar';
+import { getCachedAvatarMetaByUids, mergeAvatarMetaCache } from '../utils/avatarMetaCache';
 import './PostDetailPage.css';
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const COMMENTS_FETCH_LIMIT = 120;
+const TIMESTAMP_PATTERN = /(\d{1,2}:\d{2})/g;
 
 function formatDate(timestamp) {
   if (!timestamp) return '';
@@ -21,6 +25,95 @@ function formatDate(timestamp) {
   });
 }
 
+function isEdited(createdAt, updatedAt) {
+  const created = createdAt?.toMillis?.() ?? 0;
+  const updated = updatedAt?.toMillis?.() ?? 0;
+  return updated > created + 60 * 1000;
+}
+
+function getCreatedAtMillis(timestamp) {
+  return timestamp?.toMillis?.() ?? 0;
+}
+
+function formatSeconds(value) {
+  const sec = Math.max(0, Math.floor(value));
+  const minutes = Math.floor(sec / 60);
+  const seconds = sec % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function toSecondsFromTimestamp(timestampText) {
+  const [minutesText, secondsText] = timestampText.split(':');
+  const minutes = Number(minutesText);
+  const seconds = Number(secondsText);
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+  return minutes * 60 + seconds;
+}
+
+function findRootCommentId(comment, byId) {
+  let current = comment;
+  const visited = new Set();
+
+  while (current?.replyToCommentId && byId.has(current.replyToCommentId)) {
+    if (visited.has(current.id)) break;
+    visited.add(current.id);
+    current = byId.get(current.replyToCommentId);
+  }
+
+  return current?.id ?? comment.id;
+}
+
+function buildThreadedComments(rawComments) {
+  const byId = new Map(rawComments.map((comment) => [comment.id, comment]));
+  const childrenByParent = new Map();
+
+  rawComments.forEach((comment) => {
+    if (!comment.replyToCommentId || !byId.has(comment.replyToCommentId)) return;
+    const children = childrenByParent.get(comment.replyToCommentId) ?? [];
+    children.push(comment);
+    childrenByParent.set(comment.replyToCommentId, children);
+  });
+
+  childrenByParent.forEach((children, parentId) => {
+    children.sort((a, b) => getCreatedAtMillis(a.createdAt) - getCreatedAtMillis(b.createdAt));
+    childrenByParent.set(parentId, children);
+  });
+
+  const topLevel = rawComments
+    .filter((comment) => !comment.replyToCommentId || !byId.has(comment.replyToCommentId))
+    .sort((a, b) => getCreatedAtMillis(b.createdAt) - getCreatedAtMillis(a.createdAt));
+
+  const bestAnswer = rawComments.find((comment) => comment.isBestAnswer);
+  if (bestAnswer) {
+    const bestRootId = findRootCommentId(bestAnswer, byId);
+    topLevel.sort((a, b) => {
+      if (a.id === bestRootId) return -1;
+      if (b.id === bestRootId) return 1;
+      return getCreatedAtMillis(b.createdAt) - getCreatedAtMillis(a.createdAt);
+    });
+  }
+
+  const ordered = [];
+
+  const appendThread = (comment, depth = 0, lineage = new Set()) => {
+    if (lineage.has(comment.id)) return;
+    const nextLineage = new Set(lineage);
+    nextLineage.add(comment.id);
+
+    ordered.push({
+      ...comment,
+      threadDepth: depth,
+    });
+
+    const children = childrenByParent.get(comment.id) ?? [];
+    children.forEach((child) => appendThread(child, depth + 1, nextLineage));
+  };
+
+  topLevel.forEach((comment) => appendThread(comment));
+
+  return ordered;
+}
+
 export function PostDetailPage() {
   const { postId } = useParams();
   const { firebaseUser, userData } = useAuth();
@@ -28,6 +121,7 @@ export function PostDetailPage() {
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
+  const [authorMetaByUid, setAuthorMetaByUid] = useState({});
   const [postLoading, setPostLoading] = useState(true);
   const [postError, setPostError] = useState(false);
 
@@ -35,6 +129,7 @@ export function PostDetailPage() {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [lastSeekReturnTime, setLastSeekReturnTime] = useState(null);
 
   // コメントフォーム
   const [showCommentForm, setShowCommentForm] = useState(false);
@@ -67,14 +162,12 @@ export function PostDetailPage() {
       const q = query(
         collection(db, 'comments'),
         where('postId', '==', postId),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(COMMENTS_FETCH_LIMIT)
       );
       const snapshot = await getDocs(q);
       const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      // ベストアンサーを先頭に固定
-      const best = docs.find((c) => c.isBestAnswer);
-      const others = docs.filter((c) => !c.isBestAnswer);
-      setComments(best ? [best, ...others] : others);
+      setComments(buildThreadedComments(docs));
     } catch (err) {
       console.error(err);
     }
@@ -85,6 +178,71 @@ export function PostDetailPage() {
     fetchComments();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCommentAuthorPhotos = async () => {
+      const uniqueAuthorUids = [...new Set([
+        post?.authorUid,
+        ...comments.map((comment) => comment.authorUid),
+      ].filter(Boolean))];
+      if (uniqueAuthorUids.length === 0) {
+        if (!cancelled) setAuthorMetaByUid({});
+        return;
+      }
+
+      try {
+        const { hitMap, missUids } = getCachedAvatarMetaByUids(uniqueAuthorUids);
+        const nextMap = { ...hitMap };
+
+        if (!cancelled && Object.keys(hitMap).length > 0) {
+          setAuthorMetaByUid(nextMap);
+        }
+
+        if (missUids.length === 0) {
+          if (!cancelled) setAuthorMetaByUid(nextMap);
+          return;
+        }
+
+        const chunks = [];
+        for (let i = 0; i < missUids.length; i += 30) {
+          chunks.push(missUids.slice(i, i + 30));
+        }
+
+        const snapshots = await Promise.all(
+          chunks.map((uids) => getDocs(query(collection(db, 'users'), where(documentId(), 'in', uids))))
+        );
+
+        const fetchedMetaByUid = {};
+        snapshots.forEach((snapshot) => {
+          snapshot.docs.forEach((userDoc) => {
+            const data = userDoc.data() ?? {};
+            const meta = {
+              photoUrl: data.photoUrl ?? null,
+              isSpecial: isSpecialSkinUserId(data.userId),
+            };
+            fetchedMetaByUid[userDoc.id] = meta;
+            nextMap[userDoc.id] = meta;
+          });
+        });
+
+        if (Object.keys(fetchedMetaByUid).length > 0) {
+          mergeAvatarMetaCache(fetchedMetaByUid);
+        }
+
+        if (!cancelled) setAuthorMetaByUid(nextMap);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCommentAuthorPhotos();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [comments, post?.authorUid]);
 
   // 音源プレイヤー操作
   const handlePlayToggle = () => {
@@ -107,6 +265,76 @@ export function PostDetailPage() {
   const handleEnded = () => {
     setProgress(0);
     setIsPlaying(false);
+    setLastSeekReturnTime(null);
+  };
+
+  const handleSeek = (e) => {
+    const audio = audioRef.current;
+    if (!audio || !audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.touches?.[0]?.clientX ?? e.clientX;
+    const ratio = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+    audio.currentTime = ratio * audio.duration;
+    setProgress(ratio * 100);
+  };
+
+  const seekToSecond = (seconds) => {
+    const audio = audioRef.current;
+    if (!audio || !audio.duration) return;
+    const next = Math.min(Math.max(seconds, 0), Math.floor(audio.duration));
+    audio.currentTime = next;
+    setProgress((next / audio.duration) * 100);
+    if (!isPlaying) {
+      audio.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
+
+  const handleFocusSecondJump = () => {
+    const audio = audioRef.current;
+    const focusSecondSec = Number(post?.focusSecondSec ?? -1);
+    if (!audio || !audio.duration || !Number.isFinite(focusSecondSec) || focusSecondSec < 0) return;
+
+    const target = Math.min(Math.max(focusSecondSec, 0), Math.floor(audio.duration));
+    if (lastSeekReturnTime != null && Math.abs(audio.currentTime - target) < 1) {
+      seekToSecond(lastSeekReturnTime);
+      setLastSeekReturnTime(null);
+      return;
+    }
+
+    setLastSeekReturnTime(audio.currentTime);
+    seekToSecond(target);
+  };
+
+  const renderTextWithTimestampLinks = (text, keyPrefix) => {
+    const safeText = text ?? '';
+    const durationSec = Number(post?.audioDurationSec ?? 0);
+    if (!safeText || durationSec <= 0) return safeText;
+
+    const parts = safeText.split(TIMESTAMP_PATTERN);
+
+    return parts.map((part, index) => {
+      if (!part) return null;
+      if (!/^\d{1,2}:\d{2}$/.test(part)) {
+        return <span key={`${keyPrefix}-text-${index}`}>{part}</span>;
+      }
+
+      const seconds = toSecondsFromTimestamp(part);
+      if (!Number.isFinite(seconds) || seconds > durationSec) {
+        return <span key={`${keyPrefix}-time-${index}`}>{part}</span>;
+      }
+
+      return (
+        <button
+          key={`${keyPrefix}-btn-${index}`}
+          type="button"
+          className="detail-time-link"
+          onClick={() => seekToSecond(seconds)}
+        >
+          {part}
+        </button>
+      );
+    });
   };
 
   // コメント画像
@@ -169,14 +397,14 @@ export function PostDetailPage() {
       navigate('/auth');
       return;
     }
-    if (!commentBody.trim()) {
+    const trimmedBody = commentBody.trim();
+    if (!trimmedBody) {
       setCommentError('コメントを入力してください。');
       return;
     }
     setCommentError('');
     setCommentLoading(true);
     try {
-      const trimmedBody = commentBody.trim();
       let imageUrl = null;
       if (commentImage) {
         const imgRef = ref(
@@ -285,10 +513,32 @@ export function PostDetailPage() {
       if (replyTarget?.id === commentId) {
         setReplyTarget(null);
       }
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setComments((prev) => buildThreadedComments(prev.filter((c) => c.id !== commentId)));
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleDeletePost = async () => {
+    if (!post) return;
+    if (!window.confirm('この投稿を削除しますか？\n関連するコメントもすべて削除されます。')) return;
+    try {
+      const commentsSnap = await getDocs(
+        query(collection(db, 'comments'), where('postId', '==', post.id))
+      );
+      const batch = writeBatch(db);
+      commentsSnap.docs.forEach((d) => batch.delete(d.ref));
+      batch.delete(doc(db, 'posts', post.id));
+      await batch.commit();
+      navigate('/mypage');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCommentTap = (e, commentId) => {
+    e.stopPropagation();
+    handleDeleteComment(commentId);
   };
 
   // FABクリック: 未ログインなら認証画面へ、ログイン済みはフォーム開閉
@@ -312,6 +562,13 @@ export function PostDetailPage() {
   if (postError) return <div className="detail-state">投稿が見つかりませんでした。</div>;
 
   const initial = post.authorDisplayName?.[0]?.toUpperCase() ?? '?';
+  const postAuthorMeta = authorMetaByUid[post.authorUid] ?? null;
+  const postAuthorPhotoUrl = postAuthorMeta?.photoUrl ?? post.authorPhotoUrl ?? null;
+  const isPostAuthorSpecial = Boolean(postAuthorMeta?.isSpecial);
+  const postDurationSec = Number(post.audioDurationSec ?? 0);
+  const focusSecondSec = Number(post.focusSecondSec ?? -1);
+  const hasFocusSecond = Number.isFinite(focusSecondSec) && focusSecondSec >= 0;
+  const postIsEdited = isEdited(post.createdAt, post.updatedAt);
 
   return (
     <div className="detail-page">
@@ -325,41 +582,93 @@ export function PostDetailPage() {
       <main className="detail-main">
         {/* 投稿情報 */}
         <section className="detail-post">
+          {isPostAuthor && (
+            <>
+              <button
+                type="button"
+                className="detail-post__edit-btn"
+                onClick={() => navigate(`/post/${post.id}/edit`)}
+                aria-label="投稿を編集"
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                className="detail-post__delete-btn"
+                onClick={handleDeletePost}
+                aria-label="投稿を削除"
+              >
+                🗑
+              </button>
+            </>
+          )}
+
           <button
             className="detail-author"
             onClick={() => navigate(`/users/${post.authorUid}`)}
           >
-            {post.authorPhotoUrl ? (
-              <img className="detail-author__avatar" src={post.authorPhotoUrl} alt="" />
-            ) : (
-              <div className="detail-author__avatar-fallback">{initial}</div>
-            )}
+            <span className={`detail-author__avatar-shell ${isPostAuthorSpecial ? 'detail-author__avatar-shell--special' : ''}`}>
+              {postAuthorPhotoUrl ? (
+                <img
+                  className="detail-author__avatar"
+                  src={postAuthorPhotoUrl}
+                  alt=""
+                  decoding="sync"
+                  fetchPriority="high"
+                />
+              ) : (
+                <div className="detail-author__avatar-fallback">{initial}</div>
+              )}
+            </span>
             <span className="detail-author__name">{post.authorDisplayName}</span>
           </button>
 
           <div className="detail-meta">
             {post.worryGenre && <span className="detail-tag">{post.worryGenre}</span>}
             {post.musicGenre && <span className="detail-tag">{post.musicGenre}</span>}
+            {post.daw && <span className="detail-tag">{post.daw}</span>}
             {post.isSolved && <span className="detail-tag detail-tag--solved">解決済み</span>}
             <span className="detail-date">{formatDate(post.createdAt)}</span>
+            {postIsEdited && <span className="detail-edited-date">編集: {formatDate(post.updatedAt)}</span>}
           </div>
 
-          <p className="detail-body">{post.body}</p>
+          <p className="detail-body">{renderTextWithTimestampLinks(post.body, 'post-body')}</p>
 
           {post.imageUrl && (
-            <img className="detail-image" src={post.imageUrl} alt="" />
+            <img className="detail-image" src={post.imageUrl} alt="" loading="lazy" decoding="async" />
           )}
 
           {post.audioUrl && (
             <div className="detail-audio">
               <button
-                className="detail-play-btn"
+                className={`detail-play-btn ${isPlaying ? 'is-playing' : ''}`}
                 onClick={handlePlayToggle}
                 aria-label={isPlaying ? '一時停止' : '再生'}
               >
-                {isPlaying ? '⏸' : '▶'}
+                <span className="detail-play-icon" aria-hidden="true" />
               </button>
-              <div className="detail-progress-bar">
+              {postDurationSec > 0 && (
+                <span className="detail-duration">{formatSeconds(postDurationSec)}</span>
+              )}
+              {hasFocusSecond && (
+                <button
+                  type="button"
+                  className="detail-focus-chip"
+                  onClick={handleFocusSecondJump}
+                >
+                  {lastSeekReturnTime != null ? '元に戻る' : `${formatSeconds(focusSecondSec)}へ`}
+                </button>
+              )}
+              <div
+                className={`detail-progress-bar${isPlaying ? ' is-playing' : ''}`}
+                onClick={handleSeek}
+                onTouchStart={handleSeek}
+                role="slider"
+                aria-label="再生位置"
+                aria-valuenow={Math.round(progress)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <div className="detail-progress-fill" style={{ width: `${progress}%` }} />
               </div>
               <audio
@@ -465,20 +774,33 @@ export function PostDetailPage() {
             <p className="detail-comments__empty">まだコメントはありません。</p>
           )}
           <ul className="detail-comment-list">
-            {comments.map((comment) => (
-              <li
-                key={comment.id}
-                className={`detail-comment ${comment.isBestAnswer ? 'detail-comment--best' : ''}`}
-              >
+            {comments.map((comment) => {
+              const commentAuthorMeta = authorMetaByUid[comment.authorUid] ?? null;
+              const resolvedAuthorPhotoUrl = commentAuthorMeta?.photoUrl ?? comment.authorPhotoUrl ?? null;
+              const isCommentAuthorSpecial = Boolean(commentAuthorMeta?.isSpecial);
+
+              return (
+                <li
+                  key={comment.id}
+                  className={`detail-comment ${comment.isBestAnswer ? 'detail-comment--best' : ''} ${comment.threadDepth > 0 ? 'detail-comment--reply' : ''}`}
+                  style={{ '--reply-depth': Math.min(comment.threadDepth ?? 0, 4) }}
+                >
                 <div className="detail-comment__header">
                   <div className="detail-comment__author">
-                    {comment.authorPhotoUrl ? (
-                      <img className="detail-comment__avatar" src={comment.authorPhotoUrl} alt="" />
-                    ) : (
-                      <div className="detail-comment__avatar-fallback">
-                        {comment.authorDisplayName?.[0]?.toUpperCase() ?? '?'}
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      className={`detail-comment__author-link ${isCommentAuthorSpecial ? 'detail-comment__author-link--special' : ''}`}
+                      onClick={() => navigate(`/users/${comment.authorUid}`)}
+                      aria-label={`${comment.authorDisplayName ?? 'ユーザー'}のプロフィールを開く`}
+                    >
+                      {resolvedAuthorPhotoUrl ? (
+                        <img className="detail-comment__avatar" src={resolvedAuthorPhotoUrl} alt="" loading="eager" decoding="async" />
+                      ) : (
+                        <div className="detail-comment__avatar-fallback">
+                          {comment.authorDisplayName?.[0]?.toUpperCase() ?? '?'}
+                        </div>
+                      )}
+                    </button>
                     <span className="detail-comment__name">{comment.authorDisplayName}</span>
                     {comment.isBestAnswer && (
                       <span className="detail-comment__best-badge">ベストアンサー</span>
@@ -486,8 +808,11 @@ export function PostDetailPage() {
                   </div>
                   {isPostAuthor && (
                     <button
+                      type="button"
                       className="detail-comment__delete-btn"
-                      onClick={() => handleDeleteComment(comment.id)}
+                      onClick={(e) => handleDeleteCommentTap(e, comment.id)}
+                      onPointerUp={(e) => handleDeleteCommentTap(e, comment.id)}
+                      onPointerDown={(e) => e.stopPropagation()}
                       aria-label="コメントを削除"
                     >
                       🗑
@@ -501,10 +826,12 @@ export function PostDetailPage() {
                   </p>
                 )}
 
-                <p className="detail-comment__body">{comment.body}</p>
+                <p className="detail-comment__body">
+                  {renderTextWithTimestampLinks(comment.body, `comment-${comment.id}`)}
+                </p>
 
                 {comment.imageUrl && (
-                  <img className="detail-comment__image" src={comment.imageUrl} alt="" />
+                  <img className="detail-comment__image" src={comment.imageUrl} alt="" loading="lazy" decoding="async" />
                 )}
 
                 <div className="detail-comment__footer">
@@ -529,7 +856,8 @@ export function PostDetailPage() {
                   </div>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       </main>
@@ -537,7 +865,7 @@ export function PostDetailPage() {
       <BottomNav active="" />
 
       <button className="fab" onClick={handleFabClick} aria-label="コメントを追加">
-        {showCommentForm ? '×' : '+'}
+        <span className="fab__label">{showCommentForm ? '閉じる' : 'コメントする'}</span>
       </button>
     </div>
   );
