@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, documentId, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BottomNav } from '../components/BottomNav';
+import { isSpecialSkinUserId } from '../utils/specialAvatar';
 import './RankingPage.css';
 
 const RANKING_FETCH_LIMIT = 100;
@@ -142,13 +143,14 @@ export function RankingPage() {
                 onClick={() => navigate(`/users/${row.uid}`)}
               >
                 <span className={`ranking-rank ${row.rank <= 3 ? 'ranking-rank--top' : ''}`}>{row.rank}</span>
-                {row.photoUrl ? (
-                  <img className="ranking-avatar" src={row.photoUrl} alt="" loading="lazy" fetchPriority="low" decoding="async" />
-                ) : (
-                  <div className="ranking-avatar-fallback">{row.displayName?.[0]?.toUpperCase() ?? '?'}</div>
-                )}
+                <span className={`ranking-avatar-shell ${isSpecialSkinUserId(row.userId) ? 'ranking-avatar-shell--special' : ''}`}>
+                  {row.photoUrl ? (
+                    <img className="ranking-avatar" src={row.photoUrl} alt="" loading="lazy" fetchPriority="low" decoding="async" />
+                  ) : (
+                    <div className="ranking-avatar-fallback">{row.displayName?.[0]?.toUpperCase() ?? '?'}</div>
+                  )}
+                </span>
                 <div className="ranking-user">
-                  {row.rank === 1 && <p className="ranking-champion-title">👑 MIX KING</p>}
                   <p className="ranking-name">{row.displayName}</p>
                   <p className="ranking-id">@{row.userId}</p>
                 </div>

@@ -348,7 +348,6 @@
   cursor: pointer;
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
   position: relative;
-  overflow: hidden;
 }
 
 .ranking-item:hover {
@@ -359,6 +358,7 @@
 }
 
 .ranking-item--champion {
+  overflow: hidden;
   padding: 15px 14px;
   transform: scale(1.02);
   background: linear-gradient(126deg, rgba(26, 45, 90, 0.82), rgba(75, 42, 114, 0.78), rgba(120, 38, 122, 0.72));
@@ -628,6 +628,43 @@
   height: 44px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.ranking-avatar-shell {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.ranking-avatar-shell--special::before,
+.ranking-avatar-shell--special::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #fff;
+  top: -4px;
+  z-index: 0;
+}
+
+.ranking-avatar-shell--special::before {
+  left: 2px;
+}
+
+.ranking-avatar-shell--special::after {
+  right: 2px;
+}
+
+.ranking-avatar-shell--special .ranking-avatar,
+.ranking-avatar-shell--special .ranking-avatar-fallback {
+  position: relative;
+  z-index: 1;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .ranking-avatar {

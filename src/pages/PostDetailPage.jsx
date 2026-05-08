@@ -418,6 +418,7 @@ export function PostDetailPage() {
       const commentRef = await addDoc(collection(db, 'comments'), {
         postId,
         authorUid: firebaseUser.uid,
+        authorUserId: userData?.userId ?? null,
         authorDisplayName: userData?.displayName ?? '',
         authorPhotoUrl: userData?.photoUrl ?? null,
         body: trimmedBody,
@@ -777,7 +778,10 @@ export function PostDetailPage() {
             {comments.map((comment) => {
               const commentAuthorMeta = authorMetaByUid[comment.authorUid] ?? null;
               const resolvedAuthorPhotoUrl = commentAuthorMeta?.photoUrl ?? comment.authorPhotoUrl ?? null;
-              const isCommentAuthorSpecial = Boolean(commentAuthorMeta?.isSpecial);
+              // authorUserId が保存済みなら即判定、なければキャッシュから取得
+              const isCommentAuthorSpecial = comment.authorUserId
+                ? isSpecialSkinUserId(comment.authorUserId)
+                : Boolean(commentAuthorMeta?.isSpecial);
 
               return (
                 <li
