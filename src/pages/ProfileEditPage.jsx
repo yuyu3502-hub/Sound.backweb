@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  doc, updateDoc, serverTimestamp,
+  doc, serverTimestamp, setDoc,
   collection, query, where, getDocs, writeBatch,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -141,6 +141,7 @@ export function ProfileEditPage() {
     setLoading(true);
 
     try {
+      let postSyncFailed = false;
       let photoUrl = userData?.photoUrl ?? null;
 
       // 既存の画像を削除する場合
@@ -165,31 +166,45 @@ export function ProfileEditPage() {
       }
 
       const updated = {
+        uid: firebaseUser.uid,
         displayName: displayName.trim(),
         bio: bio.trim(),
         photoUrl,
         updatedAt: serverTimestamp(),
       };
 
-      await updateDoc(doc(db, 'users', firebaseUser.uid), updated);
+      await setDoc(doc(db, 'users', firebaseUser.uid), updated, { merge: true });
 
       // 自分の全投稿の authorDisplayName / authorPhotoUrl を一括更新
-      const postsSnap = await getDocs(
-        query(collection(db, 'posts'), where('authorUid', '==', firebaseUser.uid))
-      );
-      if (!postsSnap.empty) {
-        const batch = writeBatch(db);
-        postsSnap.docs.forEach((d) => {
-          batch.update(d.ref, {
-            authorDisplayName: updated.displayName,
-            authorPhotoUrl: updated.photoUrl,
-          });
-        });
-        await batch.commit();
+      try {
+        const postsSnap = await getDocs(
+          query(collection(db, 'posts'), where('authorUid', '==', firebaseUser.uid))
+        );
+
+        if (!postsSnap.empty) {
+          const BATCH_LIMIT = 400;
+          for (let i = 0; i < postsSnap.docs.length; i += BATCH_LIMIT) {
+            const batch = writeBatch(db);
+            postsSnap.docs.slice(i, i + BATCH_LIMIT).forEach((d) => {
+              batch.update(d.ref, {
+                authorDisplayName: updated.displayName,
+                authorPhotoUrl: updated.photoUrl,
+              });
+            });
+            await batch.commit();
+          }
+        }
+      } catch (postSyncErr) {
+        postSyncFailed = true;
+        console.error('Failed to sync author profile to posts:', postSyncErr);
       }
 
       setUserData((prev) => ({ ...prev, ...updated }));
-      setSuccessMsg('プロフィールを更新しました。');
+      if (postSyncFailed) {
+        setSuccessMsg('プロフィールを更新しました（過去の投稿への反映は一部失敗しました）。');
+      } else {
+        setSuccessMsg('プロフィールを更新しました。');
+      }
 
       setTimeout(() => navigate('/mypage'), 800);
     } catch {
