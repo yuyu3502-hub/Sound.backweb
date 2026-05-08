@@ -794,7 +794,7 @@ export function PostDetailPage() {
                       aria-label={`${comment.authorDisplayName ?? 'ユーザー'}のプロフィールを開く`}
                     >
                       {resolvedAuthorPhotoUrl ? (
-                        <img className="detail-comment__avatar" src={resolvedAuthorPhotoUrl} alt="" loading="eager" decoding="async" />
+                        <img className="detail-comment__avatar" src={resolvedAuthorPhotoUrl} alt="" loading="lazy" fetchPriority="low" decoding="async" />
                       ) : (
                         <div className="detail-comment__avatar-fallback">
                           {comment.authorDisplayName?.[0]?.toUpperCase() ?? '?'}

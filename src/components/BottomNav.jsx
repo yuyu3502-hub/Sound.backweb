@@ -92,15 +92,17 @@ export function BottomNav({ active, onHomeClick }) {
       </button>
 
       <button
-        className={`bottom-nav__btn ${active === 'ranking' ? 'bottom-nav__btn--active' : ''}`}
+        className={`bottom-nav__btn ${active === 'ranking' ? 'bottom-nav__btn--active bottom-nav__btn--ranking-active' : ''}`}
         onClick={handleRanking}
         aria-label="ランキング"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 20V10" />
-          <path d="M12 20V4" />
-          <path d="M6 20v-6" />
-        </svg>
+        <span className="bottom-nav__icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 20V10" />
+            <path d="M12 20V4" />
+            <path d="M6 20v-6" />
+          </svg>
+        </span>
         <span>ランク</span>
       </button>
 

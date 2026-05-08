@@ -100,6 +100,28 @@ export function RankingPage() {
 
   return (
     <div className="ranking-page">
+      <div className="ranking-bg" aria-hidden="true">
+        <div className="ranking-bg__base" />
+        <div className="ranking-bg__stage-lights">
+          <div className="ranking-bg__spot ranking-bg__spot--left" />
+          <div className="ranking-bg__spot ranking-bg__spot--center" />
+          <div className="ranking-bg__spot ranking-bg__spot--right" />
+        </div>
+        <div className="ranking-bg__center-glow" />
+        <div className="ranking-bg__laser ranking-bg__laser--a" />
+        <div className="ranking-bg__laser ranking-bg__laser--b" />
+        <div className="ranking-bg__fog" />
+        <div className="ranking-bg__particles ranking-bg__particles--near" />
+        <div className="ranking-bg__uplights">
+          <div className="ranking-bg__uplight ranking-bg__uplight--1" />
+          <div className="ranking-bg__uplight ranking-bg__uplight--2" />
+          <div className="ranking-bg__uplight ranking-bg__uplight--3" />
+          <div className="ranking-bg__uplight ranking-bg__uplight--4" />
+          <div className="ranking-bg__uplight ranking-bg__uplight--5" />
+        </div>
+        <div className="ranking-bg__bokeh ranking-bg__bokeh--near" />
+      </div>
+
       <header className="ranking-header">
         <div className="ranking-header__inner">
           <h1 className="ranking-title">Ranking</h1>
@@ -114,14 +136,19 @@ export function RankingPage() {
         ) : (
           <ul className="ranking-list">
             {rows.map((row) => (
-              <li key={row.uid} className="ranking-item" onClick={() => navigate(`/users/${row.uid}`)}>
+              <li
+                key={row.uid}
+                className={`ranking-item ${row.rank === 1 ? 'ranking-item--champion' : ''}`}
+                onClick={() => navigate(`/users/${row.uid}`)}
+              >
                 <span className={`ranking-rank ${row.rank <= 3 ? 'ranking-rank--top' : ''}`}>{row.rank}</span>
                 {row.photoUrl ? (
-                  <img className="ranking-avatar" src={row.photoUrl} alt="" decoding="async" />
+                  <img className="ranking-avatar" src={row.photoUrl} alt="" loading="lazy" fetchPriority="low" decoding="async" />
                 ) : (
                   <div className="ranking-avatar-fallback">{row.displayName?.[0]?.toUpperCase() ?? '?'}</div>
                 )}
                 <div className="ranking-user">
+                  {row.rank === 1 && <p className="ranking-champion-title">👑 MIX KING</p>}
                   <p className="ranking-name">{row.displayName}</p>
                   <p className="ranking-id">@{row.userId}</p>
                 </div>

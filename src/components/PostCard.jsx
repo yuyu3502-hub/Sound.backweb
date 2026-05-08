@@ -96,7 +96,8 @@ export function PostCard({
               className="post-card__avatar"
               src={authorPhotoUrl}
               alt=""
-              loading="eager"
+              loading="lazy"
+              fetchPriority="low"
               decoding="async"
             />
           ) : (

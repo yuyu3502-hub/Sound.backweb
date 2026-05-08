@@ -11,8 +11,8 @@ import { BottomNav } from '../components/BottomNav';
 import './ProfileEditPage.css';
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const AVATAR_MAX_SIZE = 160;
-const AVATAR_QUALITY = 0.6;
+const AVATAR_MAX_SIZE = 128;
+const AVATAR_QUALITY = 0.5;
 
 function readImageFile(file) {
   return new Promise((resolve, reject) => {
