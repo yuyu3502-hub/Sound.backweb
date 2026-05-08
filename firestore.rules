@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function postDoc(postId) {
+      return get(/databases/$(database)/documents/posts/$(postId));
+    }
+
+    function hasBlockedTerm(value) {
+      return value.matches('.*(死ね|殺す|レイプ|暴行|児童ポルノ|自殺しろ|porn|Porn|PORN|nude|Nude|NUDE|sex|Sex|SEX|gore|Gore|GORE|violent|Violent|VIOLENT).*');
+    }
+
+    function isCleanOptionalString(value) {
+      return value == null || (value is string && !hasBlockedTerm(value));
+    }
+
+    function isCleanPostBody() {
+      return request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && !hasBlockedTerm(request.resource.data.body)
+        && isCleanOptionalString(request.resource.data.imageUrl);
+    }
+
+    function isCleanCommentBody() {
+      return request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && !hasBlockedTerm(request.resource.data.body)
+        && isCleanOptionalString(request.resource.data.imageUrl);
+    }
+
+    // users: 公開プロフィールは読み取り可。作成/更新は本人のみ。
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if isSelf(uid)
+        && request.resource.data.uid == uid;
+      allow update: if isSelf(uid)
+        && request.resource.data.uid == uid;
+      allow delete: if false;
+    }
+
+    // posts: 読み取り公開。作成/更新/削除は投稿者本人のみ。
+    match /posts/{postId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && isCleanPostBody();
+
+      allow update: if isSignedIn()
+        && resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == resource.data.authorUid
+        && isCleanPostBody();
+
+      allow delete: if isSignedIn()
+        && resource.data.authorUid == request.auth.uid;
+    }
+
+    // comments: 読み取り公開。
+    // 作成は本人のみ。更新はコメント作成者、または投稿者が isBestAnswer を付ける場合のみ。
+    // 削除はコメント作成者または投稿者。
+    match /comments/{commentId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+        && isCleanCommentBody();
+
+      allow update: if isSignedIn() && (
+        // コメント作成者の通常更新
+        (resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.postId == resource.data.postId
+          && isCleanCommentBody())
+        ||
+        // 投稿者がベストアンサー指定
+        (
+          postDoc(resource.data.postId).data.authorUid == request.auth.uid
+          && resource.data.authorUid != request.auth.uid
+          && request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.postId == resource.data.postId
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isBestAnswer', 'updatedAt'])
+          && request.resource.data.isBestAnswer == true
+        )
+      );
+
+      allow delete: if isSignedIn() && (
+        resource.data.authorUid == request.auth.uid
+        || postDoc(resource.data.postId).data.authorUid == request.auth.uid
+      );
+    }
+
+    // notifications: 受信者本人のみ読み取り可。
+    // 作成は送信者本人が行い、既読更新は受信者本人のみ。
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userUid == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.userUid is string
+        && request.resource.data.type in ['best_answer', 'feedback', 'reply']
+        && request.resource.data.isRead == false;
+
+      allow update: if isSignedIn()
+        && resource.data.userUid == request.auth.uid
+        && request.resource.data.userUid == resource.data.userUid
+        && request.resource.data.actorUid == resource.data.actorUid
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // rankingBestAnswers: 読み取り公開。クライアント書き込みは禁止。
+    match /rankingBestAnswers/{uid} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+  }
+}

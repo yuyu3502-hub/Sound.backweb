@@ -1,0 +1,339 @@
+.create-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-height) + 16px);
+}
+
+.create-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.create-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.create-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.create-main {
+  flex: 1;
+  padding: 20px 24px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.create-required {
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.create-optional {
+  color: var(--text-secondary);
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* 本文 */
+.create-body-wrap {
+  position: relative;
+}
+
+.create-textarea {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 12px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+  line-height: 1.6;
+}
+
+.create-textarea:focus {
+  border-color: var(--accent);
+}
+
+.create-char-count {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.create-char-count--max {
+  color: var(--danger);
+}
+
+/* セレクト */
+.create-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 15px;
+  padding: 10px 12px;
+  outline: none;
+  appearance: none;
+  transition: border-color 0.15s;
+}
+
+.create-select:focus {
+  border-color: var(--accent);
+}
+
+/* ファイル選択ボタン */
+.create-file-btn {
+  background: var(--bg-input);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 12px;
+  text-align: center;
+}
+
+/* 画像プレビュー */
+.create-image-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-image-preview img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+/* 音源プレビュー */
+.create-audio-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.create-audio-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-audio-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.create-audio-player__play-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.create-audio-player__play-icon {
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 10px solid currentColor;
+  margin-left: 2px;
+}
+
+.create-audio-player__play-btn.is-playing .create-audio-player__play-icon {
+  width: 9px;
+  height: 10px;
+  border: none;
+  margin-left: 0;
+  background:
+    linear-gradient(90deg, currentColor 0 36%, transparent 36% 64%, currentColor 64% 100%);
+}
+
+.create-audio-player__progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: visible;
+  cursor: pointer;
+  position: relative;
+  padding: 8px 0;
+  margin: -8px 0;
+  box-sizing: content-box;
+  background: transparent;
+}
+
+.create-audio-player__progress-bar::before {
+  content: '';
+  position: absolute;
+  inset: 8px 0;
+  background: var(--bg-input);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.create-audio-player__progress-fill {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #1ed760, #6cffa8);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
+
+.create-audio-player__progress-bar.is-playing .create-audio-player__progress-fill {
+  box-shadow:
+    0 0 6px rgba(30, 215, 96, 0.85),
+    0 0 14px rgba(30, 215, 96, 0.5);
+}
+
+.create-audio-player__time {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 84px;
+  text-align: right;
+}
+
+.create-audio-meta__duration {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.create-audio-meta__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.create-audio-meta__input {
+  width: 140px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.create-audio-meta__input:focus {
+  border-color: var(--accent);
+}
+
+.create-audio-meta__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-audio-meta__use-current-btn {
+  border: 1px solid rgba(30, 215, 96, 0.45);
+  background: rgba(30, 215, 96, 0.12);
+  color: #9ef2c1;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.create-audio-meta__use-current-btn:hover {
+  background: rgba(30, 215, 96, 0.2);
+}
+
+/* 削除ボタン */
+.create-remove-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* エラー */
+.create-error {
+  font-size: 13px;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* 投稿ボタン */
+.create-submit {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 14px;
+  margin-top: 16px;
+  transition: opacity 0.15s;
+}
+
+.create-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -1,0 +1,318 @@
+.mypage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-height) + 80px);
+}
+
+.mypage-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mypage-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.mypage-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.mypage-main {
+  flex: 1;
+  padding: 16px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* プロフィール */
+.mypage-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.mypage-profile__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mypage-profile__avatar-fallback {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.mypage-profile__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mypage-profile__id {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.mypage-profile__name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mypage-profile__bio {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mypage-profile__best-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  background: rgba(255, 196, 0, 0.15);
+  border: 1px solid rgba(255, 196, 0, 0.4);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffc400;
+}
+
+.mypage-profile__edit-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 4px 14px;
+  flex-shrink: 0;
+}
+
+.mypage-profile__logout-btn {
+  background: none;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 20px;
+  color: #fca5a5;
+  font-size: 13px;
+  padding: 4px 14px;
+  flex-shrink: 0;
+}
+
+.mypage-profile__logout-btn:disabled {
+  opacity: 0.6;
+}
+
+.mypage-error {
+  margin-top: -10px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* 投稿セクション */
+.mypage-section__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.mypage-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 投稿カード */
+.mypage-post-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+}
+
+.mypage-post-card__body-area {
+  flex: 1;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 14px;
+  padding-right: 48px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mypage-post-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mypage-post-card__date {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.mypage-post-card__edited-badge {
+  font-size: 11px;
+  background: rgba(156, 163, 175, 0.16);
+  border: 1px solid rgba(156, 163, 175, 0.35);
+  color: #cbd5e1;
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
+.mypage-post-card__badge {
+  font-size: 11px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
+.mypage-post-card__audio-badge {
+  font-size: 12px;
+}
+
+.mypage-post-card__text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.mypage-post-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mypage-post-card__tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.mypage-post-card__thumb {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.mypage-post-card__delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.08);
+  font-size: 14px;
+  color: #fca5a5;
+  opacity: 0.88;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.mypage-post-card__edit-btn {
+  position: absolute;
+  top: 10px;
+  right: 52px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(30, 215, 96, 0.5);
+  background: rgba(30, 215, 96, 0.1);
+  font-size: 14px;
+  color: #9ef2c1;
+  opacity: 0.9;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.mypage-post-card__edit-btn:hover {
+  border-color: rgba(110, 255, 166, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(110, 255, 166, 0.35),
+    0 0 14px rgba(30, 215, 96, 0.32);
+  transform: translateY(-1px);
+}
+
+.mypage-post-card__delete-btn:hover {
+  opacity: 1;
+  border-color: rgba(248, 113, 113, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(248, 113, 113, 0.35),
+    0 0 14px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
+}
+
+/* 空・ローディング */
+.mypage-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 48px 0;
+}

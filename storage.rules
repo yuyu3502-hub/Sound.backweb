@@ -1,0 +1,64 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isAudio() {
+      return request.resource.contentType.matches('audio/.*');
+    }
+
+    function isCleanFileName(fileName) {
+      return !fileName.matches('.*(死ね|殺す|レイプ|暴行|児童ポルノ|自殺しろ|porn|Porn|PORN|nude|Nude|NUDE|sex|Sex|SEX|gore|Gore|GORE|violent|Violent|VIOLENT|ヌード|グロ|死体).*');
+    }
+
+    // 投稿画像
+    match /posts/images/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && isCleanFileName(fileName)
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // 投稿音源
+    match /posts/audio/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isAudio()
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // コメント画像
+    match /comments/images/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && isCleanFileName(fileName)
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // アバター画像
+    match /users/avatars/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && isCleanFileName(fileName)
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // 上記以外は拒否
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
