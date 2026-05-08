@@ -29,3 +29,6 @@ dist-ssr
 !.env.example
 
 .firebase/
+
+# Reference assets (not app source)
+references/
