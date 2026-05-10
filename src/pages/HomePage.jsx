@@ -8,6 +8,7 @@ import { PostCard } from '../components/PostCard';
 import { BottomNav } from '../components/BottomNav';
 import { isSpecialSkinUserId } from '../utils/specialAvatar';
 import { getCachedAvatarMetaByUids, mergeAvatarMetaCache } from '../utils/avatarMetaCache';
+import { fetchReplyCountByPostIds } from '../utils/replyCountCache';
 import './HomePage.css';
 
 export function HomePage() {
@@ -16,6 +17,7 @@ export function HomePage() {
   const [currentPlayingId, setCurrentPlayingId] = useState(null);
   const [authorPhotoByUid, setAuthorPhotoByUid] = useState({});
   const [specialAuthorByUid, setSpecialAuthorByUid] = useState({});
+  const [replyCountByPostId, setReplyCountByPostId] = useState({});
   const { firebaseUser, userData } = useAuth();
   const navigate = useNavigate();
 
@@ -92,6 +94,31 @@ export function HomePage() {
     };
 
     fetchAuthorPhotos();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [posts]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchReplyCounts = async () => {
+      const postIds = posts.map((post) => post.id).filter(Boolean);
+      if (postIds.length === 0) {
+        if (!cancelled) setReplyCountByPostId({});
+        return;
+      }
+
+      try {
+        const countByPostId = await fetchReplyCountByPostIds(db, postIds);
+        if (!cancelled) setReplyCountByPostId(countByPostId);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchReplyCounts();
 
     return () => {
       cancelled = true;
@@ -182,6 +209,7 @@ export function HomePage() {
                     showSolvedBadge
                     authorPhotoUrlOverride={authorPhotoByUid[post.authorUid] ?? null}
                     isSpecialAvatar={Boolean(specialAuthorByUid[post.authorUid])}
+                    replyCount={replyCountByPostId[post.id] ?? 0}
                   />
                 </li>
               ))}

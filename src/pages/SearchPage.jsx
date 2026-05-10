@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   collection, query, where, getDocs, orderBy, limit,
@@ -7,6 +7,7 @@ import { db } from '../firebase';
 import { PostCard } from '../components/PostCard';
 import { BottomNav } from '../components/BottomNav';
 import { isSpecialSkinUserId } from '../utils/specialAvatar';
+import { fetchReplyCountByPostIds } from '../utils/replyCountCache';
 import './SearchPage.css';
 
 const WORRY_GENRES = [
@@ -44,6 +45,32 @@ export function SearchPage() {
   const [postLoading, setPostLoading] = useState(false);
   const [postSearched, setPostSearched] = useState(false);
   const [playingId, setPlayingId] = useState(null);
+  const [replyCountByPostId, setReplyCountByPostId] = useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchReplyCounts = async () => {
+      const postIds = postResults.map((post) => post.id).filter(Boolean);
+      if (postIds.length === 0) {
+        if (!cancelled) setReplyCountByPostId({});
+        return;
+      }
+
+      try {
+        const countByPostId = await fetchReplyCountByPostIds(db, postIds);
+        if (!cancelled) setReplyCountByPostId(countByPostId);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchReplyCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [postResults]);
 
   /* ---- ユーザー検索 ---- */
   const handleUserSearch = async () => {
@@ -247,6 +274,7 @@ export function SearchPage() {
                         post={post}
                         isPlaying={playingId === post.id}
                         onPlay={(id) => setPlayingId(id)}
+                        replyCount={replyCountByPostId[post.id] ?? 0}
                       />
                     </div>
                   ))}

@@ -8,6 +8,7 @@ export function PostCard({
   showSolvedBadge = false,
   authorPhotoUrlOverride = null,
   isSpecialAvatar = false,
+  replyCount = 0,
 }) {
   const audioRef = useRef(null);
   const [progress, setProgress] = useState(0);
@@ -18,6 +19,7 @@ export function PostCard({
   const durationSec = Number(post.audioDurationSec ?? 0);
   const focusSecondSec = Number(post.focusSecondSec ?? -1);
   const hasFocusSecond = Number.isFinite(focusSecondSec) && focusSecondSec >= 0;
+  const safeReplyCount = Math.max(0, Number(replyCount) || 0);
 
   const formatSeconds = (value) => {
     const sec = Math.max(0, Math.floor(value));
@@ -111,6 +113,20 @@ export function PostCard({
       </div>
 
       <p className="post-card__body">{post.body}</p>
+
+      <div className="post-card__meta-row">
+        <span className="post-card__reply-count">返信 {safeReplyCount}件</span>
+        {post.imageUrl && (
+          <img
+            className="post-card__thumb"
+            src={post.imageUrl}
+            alt=""
+            loading="lazy"
+            fetchPriority="low"
+            decoding="async"
+          />
+        )}
+      </div>
 
       {hasAllGenres && (
         <div className="post-card__tags">
