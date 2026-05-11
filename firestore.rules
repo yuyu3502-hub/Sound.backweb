@@ -41,7 +41,13 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && request.resource.data.uid == uid;
       allow update: if isSelf(uid)
-        && request.resource.data.uid == uid;
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'displayName',
+          'bio',
+          'photoUrl',
+          'updatedAt'
+        ]);
       allow delete: if false;
     }
 

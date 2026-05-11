@@ -13,6 +13,7 @@ const UserPage = lazy(() => import('./pages/UserPage').then((m) => ({ default: m
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const RankingPage = lazy(() => import('./pages/RankingPage').then((m) => ({ default: m.RankingPage })));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/ranking" element={<RankingPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/users/:uid" element={<UserPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

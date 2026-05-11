@@ -157,6 +157,14 @@ export function MyPage() {
           >
             編集
           </button>
+          {userData?.role === 'admin' && (
+            <button
+              className="mypage-profile__admin-btn"
+              onClick={() => navigate('/admin')}
+            >
+              運営
+            </button>
+          )}
           <button
             className="mypage-profile__logout-btn"
             onClick={handleLogout}
