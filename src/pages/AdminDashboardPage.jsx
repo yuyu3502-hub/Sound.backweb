@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getCountFromServer, query, Timestamp, where } from 'firebase/firestore';
+import { collection, doc, getCountFromServer, getDoc, query, Timestamp, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
@@ -24,6 +24,13 @@ function formatDayLabel(date) {
 
 function formatPercent(value) {
   return `${value.toFixed(1)}%`;
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function MetricCard({ label, value, sublabel }) {
@@ -65,10 +72,13 @@ export function AdminDashboardPage() {
         const usersRef = collection(db, 'users');
         const postsRef = collection(db, 'posts');
         const commentsRef = collection(db, 'comments');
+        const pageViewSummaryRef = doc(db, 'analytics_summary', 'pageViews');
 
         const now = new Date();
         const today = startOfDay(now);
         const last7Start = addDays(today, -(DAYS_TO_SHOW - 1));
+        const todayKey = formatDateKey(today);
+        const todayPageViewRef = doc(db, 'analytics_page_views_daily', todayKey);
 
         const [
           totalUsersSnap,
@@ -79,6 +89,8 @@ export function AdminDashboardPage() {
           todayCommentsSnap,
           solvedPostsSnap,
           bestAnswerSnap,
+          pageViewSummarySnap,
+          todayPageViewSnap,
         ] = await Promise.all([
           getCountFromServer(usersRef),
           getCountFromServer(query(usersRef, where('createdAt', '>=', Timestamp.fromDate(today)))),
@@ -88,11 +100,13 @@ export function AdminDashboardPage() {
           getCountFromServer(query(commentsRef, where('createdAt', '>=', Timestamp.fromDate(today)))),
           getCountFromServer(query(postsRef, where('isSolved', '==', true))),
           getCountFromServer(query(commentsRef, where('isBestAnswer', '==', true))),
+          getDoc(pageViewSummaryRef),
+          getDoc(todayPageViewRef),
         ]);
 
         const dayStarts = Array.from({ length: DAYS_TO_SHOW }, (_, index) => addDays(last7Start, index));
 
-        const [userTrend, postTrend, commentTrend] = await Promise.all([
+        const [userTrend, postTrend, commentTrend, pageViewTrend] = await Promise.all([
           Promise.all(
             dayStarts.map(async (dayStart) => {
               const nextDay = addDays(dayStart, 1);
@@ -132,6 +146,13 @@ export function AdminDashboardPage() {
               return { label: formatDayLabel(dayStart), count: snap.data().count ?? 0 };
             })
           ),
+          Promise.all(
+            dayStarts.map(async (dayStart) => {
+              const dayKey = formatDateKey(dayStart);
+              const snap = await getDoc(doc(db, 'analytics_page_views_daily', dayKey));
+              return { label: formatDayLabel(dayStart), count: Number(snap.data()?.count ?? 0) };
+            })
+          ),
         ]);
 
         const totalPosts = Number(totalPostsSnap.data().count ?? 0);
@@ -149,9 +170,12 @@ export function AdminDashboardPage() {
             solvedPosts,
             solvedRate,
             bestAnswers: Number(bestAnswerSnap.data().count ?? 0),
+            totalPageViews: Number(pageViewSummarySnap.data()?.totalCount ?? 0),
+            todayPageViews: Number(todayPageViewSnap.data()?.count ?? 0),
             userTrend,
             postTrend,
             commentTrend,
+            pageViewTrend,
           });
         }
       } catch (err) {
@@ -195,6 +219,7 @@ export function AdminDashboardPage() {
                 <MetricCard label="総ユーザー数" value={`${stats.totalUsers}人`} sublabel={`今日 +${stats.todayUsers}人`} />
                 <MetricCard label="総投稿数" value={`${stats.totalPosts}件`} sublabel={`今日 +${stats.todayPosts}件`} />
                 <MetricCard label="総コメント数" value={`${stats.totalComments}件`} sublabel={`今日 +${stats.todayComments}件`} />
+                <MetricCard label="総閲覧数" value={`${stats.totalPageViews}PV`} sublabel={`今日 +${stats.todayPageViews}PV`} />
                 <MetricCard label="解決済み投稿" value={`${stats.solvedPosts}件`} sublabel={`解決率 ${formatPercent(stats.solvedRate)}`} />
                 <MetricCard label="ベストアンサー数" value={`${stats.bestAnswers}件`} sublabel="累計" />
               </div>
@@ -234,6 +259,18 @@ export function AdminDashboardPage() {
                       <li key={`comments-${item.label}`} className="admin-trend-list__item">
                         <span>{item.label}</span>
                         <strong>{item.count}件</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="admin-trend-card">
+                  <h3 className="admin-trend-card__title">閲覧数（PV）</h3>
+                  <ul className="admin-trend-list">
+                    {stats.pageViewTrend.map((item) => (
+                      <li key={`pv-${item.label}`} className="admin-trend-list__item">
+                        <span>{item.label}</span>
+                        <strong>{item.count}PV</strong>
                       </li>
                     ))}
                   </ul>

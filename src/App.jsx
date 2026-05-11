@@ -1,6 +1,8 @@
-import { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { logPageView, trackPageViewCounter } from './firebase';
+import { useAuth } from './context/AuthContext';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
@@ -15,10 +17,25 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m
 const RankingPage = lazy(() => import('./pages/RankingPage').then((m) => ({ default: m.RankingPage })));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 
+function AnalyticsRouteTracker() {
+  const location = useLocation();
+  const { firebaseUser, isLoading } = useAuth();
+
+  useEffect(() => {
+    logPageView(location.pathname, location.search);
+    if (!isLoading && firebaseUser?.uid) {
+      trackPageViewCounter(location.pathname, location.search, firebaseUser.uid);
+    }
+  }, [firebaseUser?.uid, isLoading, location.pathname, location.search]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <AnalyticsRouteTracker />
         <Suspense fallback={<div className="detail-state">読み込み中...</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />

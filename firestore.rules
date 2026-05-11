@@ -130,5 +130,19 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if false;
     }
+
+    // analytics_page_views_daily: 閲覧数の日別集計。
+    match /analytics_page_views_daily/{dateKey} {
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if false;
+    }
+
+    // analytics_summary: 閲覧数の累計集計。
+    match /analytics_summary/{docId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && docId == 'pageViews';
+      allow delete: if false;
+    }
   }
 }
