@@ -108,7 +108,7 @@ export function PostCard({
           )}
         </span>
         <span className="post-card__display-name">{post.authorDisplayName}</span>
-        {isOfficialSample && <span className="post-card__sample-badge">サンプル</span>}
+        {isOfficialSample && <span className="post-card__sample-badge">運営サンプル</span>}
         {showSolvedBadge && isSolved && (
           <span className="post-card__solved-badge">解決済み</span>
         )}

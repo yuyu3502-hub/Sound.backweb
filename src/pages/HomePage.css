@@ -283,6 +283,12 @@
   color: #c8ffdf;
 }
 
+.home-guest-genre__note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.72);
+}
+
 /* メインコンテンツ */
 .home-main {
   flex: 1;
@@ -324,6 +330,11 @@
   flex-direction: column;
   align-items: center;
   gap: 14px;
+}
+
+.home-state--compact {
+  padding: 18px 0;
+  gap: 6px;
 }
 
 .home-state__error-detail {

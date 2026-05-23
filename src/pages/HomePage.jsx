@@ -20,6 +20,10 @@ function classifyGuestGenre(post) {
   const body = String(post.body ?? '').toLowerCase();
   const musicGenre = String(post.musicGenre ?? '').toLowerCase();
 
+  if (worryGenre === 'AI作曲') {
+    return 'AI作曲';
+  }
+
   if (/(ai|生成|suno|udio|vocaloid|ボカロ)/i.test(body) || /ai|ボカロ|vocaloid/i.test(musicGenre)) {
     return 'AI作曲';
   }
@@ -159,7 +163,16 @@ export function HomePage() {
     navigate(`/post/${postId}`);
   };
 
+  const clearGuestGenre = () => {
+    setGuestGenre(null);
+    sessionStorage.removeItem(GUEST_GENRE_KEY);
+  };
+
   const handleGuestGenreSelect = (genre) => {
+    if (guestGenre === genre) {
+      clearGuestGenre();
+      return;
+    }
     setGuestGenre(genre);
     sessionStorage.setItem(GUEST_GENRE_KEY, genre);
   };
@@ -167,6 +180,8 @@ export function HomePage() {
   const visiblePosts = firebaseUser || !guestGenre
     ? posts
     : posts.filter((post) => classifyGuestGenre(post) === guestGenre);
+
+  const showGuestFilteredEmpty = !firebaseUser && Boolean(guestGenre) && !loading && !error && visiblePosts.length === 0;
 
   return (
     <div className="home-page">
@@ -215,6 +230,13 @@ export function HomePage() {
           <div className="home-guest-genre">
             <p className="home-guest-genre__title">気になるジャンルを選んで投稿を見る</p>
             <div className="home-guest-genre__chips">
+              <button
+                type="button"
+                className={`home-guest-genre__chip ${guestGenre === null ? 'is-active' : ''}`}
+                onClick={clearGuestGenre}
+              >
+                すべて
+              </button>
               {GUEST_GENRE_OPTIONS.map((genre) => (
                 <button
                   key={genre}
@@ -226,6 +248,7 @@ export function HomePage() {
                 </button>
               ))}
             </div>
+            {!guestGenre && <p className="home-guest-genre__note">最新の投稿を表示中</p>}
           </div>
         </div>
       )}
@@ -243,12 +266,19 @@ export function HomePage() {
           </div>
         )}
 
-        {!loading && !error && visiblePosts.length === 0 && (
+        {!loading && !error && !showGuestFilteredEmpty && visiblePosts.length === 0 && (
           <p className="home-state">投稿はまだありません。</p>
         )}
 
-        {!firebaseUser && !guestGenre && (
-          <p className="home-state">ジャンルを選ぶと、あなた向けの投稿を表示します。</p>
+        {!firebaseUser && !guestGenre && posts.length > 0 && (
+          <p className="home-state home-state--compact">ジャンルを選ぶと、あなた向けに絞り込めます。</p>
+        )}
+
+        {showGuestFilteredEmpty && (
+          <div className="home-state home-state--compact">
+            <p>このジャンルの投稿は、読み込み済み分にはまだありません。</p>
+            {hasMore && <p>さらに探すと見つかる可能性があります。</p>}
+          </div>
         )}
 
         {visiblePosts.length > 0 && (
@@ -279,6 +309,16 @@ export function HomePage() {
               </button>
             )}
           </>
+        )}
+
+        {visiblePosts.length === 0 && hasMore && !loading && !error && (
+          <button
+            className="home-load-more"
+            onClick={fetchMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? '読み込み中...' : 'さらに探す'}
+          </button>
         )}
       </main>
 
