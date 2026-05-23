@@ -11,6 +11,9 @@ import { getCachedAvatarMetaByUids, mergeAvatarMetaCache } from '../utils/avatar
 import { fetchReplyCountByPostIds } from '../utils/replyCountCache';
 import './HomePage.css';
 
+const GUEST_GENRE_OPTIONS = ['AI作曲', 'DTM', 'その他'];
+const GUEST_GENRE_KEY = 'soundback_guest_genre';
+
 function scheduleWhenIdle(task) {
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
     const idleId = window.requestIdleCallback(task, { timeout: 1200 });
@@ -28,8 +31,32 @@ export function HomePage() {
   const [authorPhotoByUid, setAuthorPhotoByUid] = useState({});
   const [specialAuthorByUid, setSpecialAuthorByUid] = useState({});
   const [replyCountByPostId, setReplyCountByPostId] = useState({});
+  const [guestGenre, setGuestGenre] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = window.sessionStorage.getItem(GUEST_GENRE_KEY);
+    return saved && GUEST_GENRE_OPTIONS.includes(saved) ? saved : null;
+  });
   const { firebaseUser, userData } = useAuth();
   const navigate = useNavigate();
+
+  const classifyGuestGenre = (post) => {
+    const worryGenre = String(post.worryGenre ?? '');
+    const daw = String(post.daw ?? '');
+    const body = String(post.body ?? '').toLowerCase();
+    const musicGenre = String(post.musicGenre ?? '').toLowerCase();
+
+    if (worryGenre === 'AI作曲') return 'AI作曲';
+
+    if (/(ai|生成|suno|udio|vocaloid|ボカロ)/i.test(body) || /ai|ボカロ|vocaloid/i.test(musicGenre)) {
+      return 'AI作曲';
+    }
+
+    if (worryGenre === 'DAW操作' || daw) {
+      return 'DTM';
+    }
+
+    return 'その他';
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -152,6 +179,30 @@ export function HomePage() {
     navigate(`/post/${postId}`);
   };
 
+  const clearGuestGenre = () => {
+    setGuestGenre(null);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(GUEST_GENRE_KEY);
+    }
+  };
+
+  const handleGuestGenreSelect = (genre) => {
+    if (guestGenre === genre) {
+      clearGuestGenre();
+      return;
+    }
+    setGuestGenre(genre);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(GUEST_GENRE_KEY, genre);
+    }
+  };
+
+  const visiblePosts = firebaseUser || !guestGenre
+    ? posts
+    : posts.filter((post) => classifyGuestGenre(post) === guestGenre);
+
+  const showGuestFilteredEmpty = !firebaseUser && Boolean(guestGenre) && !loading && !error && visiblePosts.length === 0;
+
   return (
     <div className="home-page">
       <header className="home-header">
@@ -195,6 +246,30 @@ export function HomePage() {
           <button className="home-hero__cta" onClick={() => navigate('/auth')}>
             無料ではじめる
           </button>
+
+          <div className="home-guest-genre">
+            <p className="home-guest-genre__title">気になるジャンルを選んで投稿を見る</p>
+            <div className="home-guest-genre__chips">
+              <button
+                type="button"
+                className={`home-guest-genre__chip ${guestGenre === null ? 'is-active' : ''}`}
+                onClick={clearGuestGenre}
+              >
+                すべて
+              </button>
+              {GUEST_GENRE_OPTIONS.map((genre) => (
+                <button
+                  key={genre}
+                  type="button"
+                  className={`home-guest-genre__chip ${guestGenre === genre ? 'is-active' : ''}`}
+                  onClick={() => handleGuestGenreSelect(genre)}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+            {!guestGenre && <p className="home-guest-genre__note">最新の投稿を表示中</p>}
+          </div>
         </div>
       )}
 
@@ -211,14 +286,22 @@ export function HomePage() {
           </div>
         )}
 
-        {!loading && !error && posts.length === 0 && (
+        {!loading && !error && visiblePosts.length === 0 && (
           <p className="home-state">投稿はまだありません。</p>
         )}
 
-        {posts.length > 0 && (
+        {!firebaseUser && !guestGenre && (
+          <p className="home-state">ジャンルを選ぶと、あなた向けの投稿を表示します。</p>
+        )}
+
+        {showGuestFilteredEmpty && (
+          <p className="home-state">このジャンルではまだ投稿が見つかりません。別のジャンルも試してみてください。</p>
+        )}
+
+        {visiblePosts.length > 0 && (
           <>
             <ul className="home-post-list">
-              {posts.map((post) => (
+              {visiblePosts.map((post) => (
                 <li key={post.id} onClick={() => handleCardClick(post.id)}>
                   <PostCard
                     post={post}
