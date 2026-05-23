@@ -22,8 +22,6 @@ function scheduleWhenIdle(task) {
 }
 
 export function HomePage() {
-  const [showStudyMessage, setShowStudyMessage] = useState(false);
-  const [studyInput, setStudyInput] = useState('');
   const { posts, loading, error, hasMore, loadingMore, fetchMore, refresh } =
     usePosts();
   const [currentPlayingId, setCurrentPlayingId] = useState(null);
@@ -201,26 +199,6 @@ export function HomePage() {
       )}
 
       <main className="home-main">
-        <div style={{ marginBottom: 12 }}>
-          <button onClick={() => setShowStudyMessage((prev) => !prev)}>
-            {showStudyMessage ? 'メッセージを隠す' : 'メッセージを表示'}
-          </button>
-          {showStudyMessage && <p>Reactのstateが動いた！</p>}
-
-          <div style={{ marginTop: 12 }}>
-            <input
-              type="text"
-              value={studyInput}
-              onChange={(event) => setStudyInput(event.target.value)}
-              placeholder="ここに文字を入力"
-              style={{ padding: '8px 10px', width: '100%', maxWidth: 320 }}
-            />
-            <p style={{ marginTop: 8 }}>入力中: {studyInput || '（まだ未入力）'}</p>
-            <p>文字数: {studyInput.length}</p>
-            <button onClick={() => setStudyInput('')}>入力をクリア</button>
-          </div>
-        </div>
-
         {loading && <p className="home-state">読み込み中...</p>}
 
         {error && (
