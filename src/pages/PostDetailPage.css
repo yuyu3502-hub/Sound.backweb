@@ -58,8 +58,8 @@
   top: 10px;
   right: 10px;
   z-index: 2;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   border: 1px solid rgba(239, 68, 68, 0.5);
   background: rgba(239, 68, 68, 0.08);
@@ -76,10 +76,10 @@
 .detail-post__edit-btn {
   position: absolute;
   top: 10px;
-  right: 52px;
+  right: 58px;
   z-index: 2;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   border: 1px solid rgba(30, 215, 96, 0.5);
   background: rgba(30, 215, 96, 0.1);
@@ -244,12 +244,13 @@
 }
 
 .detail-duration {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(226, 232, 240, 0.82);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 4px 9px;
+  min-height: 24px;
   white-space: nowrap;
 }
 
@@ -259,7 +260,8 @@
   color: #9ef2c1;
   border-radius: 999px;
   padding: 4px 9px;
-  font-size: 11px;
+  min-height: 24px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -269,8 +271,8 @@
 }
 
 .detail-play-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--accent);
   border: none;
@@ -545,17 +547,18 @@
 }
 
 .detail-comment__best-badge {
-  font-size: 11px;
+  font-size: 12px;
   background: var(--accent);
   color: #fff;
   border-radius: 20px;
-  padding: 2px 8px;
+  padding: 4px 9px;
+  min-height: 24px;
   font-weight: 600;
 }
 
 .detail-comment__delete-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   border: 1px solid rgba(239, 68, 68, 0.5);
   background: rgba(239, 68, 68, 0.08);
@@ -627,7 +630,8 @@
   color: var(--text-secondary);
   border-radius: 20px;
   font-size: 12px;
-  padding: 3px 10px;
+  padding: 4px 10px;
+  min-height: 24px;
 }
 
 .detail-comment__best-btn {
@@ -636,7 +640,8 @@
   color: var(--accent);
   border-radius: 20px;
   font-size: 12px;
-  padding: 3px 10px;
+  padding: 4px 10px;
+  min-height: 24px;
 }
 
 /* コメントフォーム */

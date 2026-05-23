@@ -16,7 +16,7 @@
   --accent: #1ed760;
   --accent-strong: #1fdf64;
   --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
+  --text-secondary: #c4c4c4;
   --border: #2f2f2f;
   --danger: #ef4444;
   --radius: 16px;
@@ -124,7 +124,7 @@ ul {
 }
 
 .fab__label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.2;

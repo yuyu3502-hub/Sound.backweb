@@ -872,7 +872,7 @@ export function PostDetailPage() {
       <BottomNav active="" />
 
       <button className="fab" onClick={handleFabClick} aria-label="コメントを追加">
-        <span className="fab__label">{showCommentForm ? '閉じる' : 'コメントする'}</span>
+        <span className="fab__label">{!firebaseUser ? '登録してコメント' : showCommentForm ? '閉じる' : 'コメントする'}</span>
       </button>
     </div>
   );

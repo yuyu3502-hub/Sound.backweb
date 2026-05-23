@@ -558,6 +558,39 @@
 }
 
 @media (max-width: 640px) {
+  .ranking-page {
+    background: radial-gradient(circle at 20% 10%, rgba(68, 88, 255, 0.16), transparent 44%),
+      radial-gradient(circle at 84% 18%, rgba(157, 84, 255, 0.14), transparent 42%),
+      linear-gradient(180deg, #05060b 0%, #04050a 52%, #030409 100%);
+  }
+
+  .ranking-bg__base {
+    opacity: 0.42;
+    filter: blur(30px);
+  }
+
+  .ranking-bg__bokeh--near {
+    opacity: 0.14;
+    filter: blur(2.8px);
+  }
+
+  .ranking-bg__bokeh--far {
+    opacity: 0.08;
+    filter: blur(13px);
+  }
+
+  .ranking-bg__fog {
+    opacity: 0.24;
+  }
+
+  .ranking-bg__center-glow {
+    opacity: 0.42;
+  }
+
+  .ranking-bg__laser {
+    opacity: 0.12;
+  }
+
   .ranking-bg__uplights {
     inset: auto -16% -8% -16%;
     height: 38%;
@@ -595,6 +628,8 @@
   .ranking-item--champion {
     transform: scale(1.01);
     padding: 14px 12px;
+    box-shadow: inset 0 1px 0 rgba(246, 250, 255, 0.3), 0 12px 28px rgba(30, 24, 70, 0.4),
+      0 0 24px rgba(147, 113, 255, 0.2);
   }
 }
 

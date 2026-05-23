@@ -329,7 +329,7 @@ export function HomePage() {
         onClick={() => navigate(firebaseUser ? '/create' : '/auth?mode=register')}
         aria-label="投稿する"
       >
-        <span className="fab__label">悩みを投稿</span>
+        <span className="fab__label">{firebaseUser ? '悩みを投稿' : '登録して投稿'}</span>
       </button>
     </div>
   );

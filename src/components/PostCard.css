@@ -8,8 +8,8 @@
 }
 
 .post-card--sample {
-  border-color: rgba(251, 191, 36, 0.35);
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.09), rgba(255, 255, 255, 0.02));
+  border-color: rgba(251, 191, 36, 0.34);
+  background: var(--bg-card);
 }
 
 .post-card:hover {
@@ -19,8 +19,8 @@
 }
 
 .post-card--sample:hover {
-  border-color: rgba(251, 191, 36, 0.55);
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.14), rgba(255, 255, 255, 0.03));
+  border-color: rgba(251, 191, 36, 0.5);
+  background: #1d1d1d;
 }
 
 .post-card__header {
@@ -102,8 +102,9 @@
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 11px;
+  padding: 4px 9px;
+  min-height: 24px;
+  font-size: 12px;
   font-weight: 700;
   color: #fef3c7;
   border: 1px solid rgba(251, 191, 36, 0.5);
@@ -116,8 +117,9 @@
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 11px;
+  padding: 4px 9px;
+  min-height: 24px;
+  font-size: 12px;
   font-weight: 700;
   color: #9ef2c1;
   border: 1px solid rgba(30, 215, 96, 0.45);
@@ -170,12 +172,13 @@
 }
 
 .post-card__tag {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 4px 9px;
+  min-height: 24px;
 }
 
 /* 音源プレイヤー */
@@ -187,12 +190,13 @@
 }
 
 .post-card__duration {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(226, 232, 240, 0.82);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 4px 9px;
+  min-height: 24px;
   white-space: nowrap;
 }
 
@@ -202,7 +206,8 @@
   color: #9ef2c1;
   border-radius: 999px;
   padding: 4px 9px;
-  font-size: 11px;
+  min-height: 24px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -212,8 +217,8 @@
 }
 
 .post-card__play-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--accent);
   border: none;
