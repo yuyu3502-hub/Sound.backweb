@@ -194,7 +194,7 @@ export function HomePage() {
           </h1>
           <button
             className="home-header__avatar-btn"
-            onClick={() => navigate(firebaseUser ? '/mypage' : '/auth')}
+            onClick={() => navigate(firebaseUser ? '/mypage' : '/auth?mode=register')}
             aria-label="マイページ"
           >
             {userData?.photoUrl ? (
@@ -221,9 +221,9 @@ export function HomePage() {
             <li className="home-hero__bubble">音がスカスカ…</li>
             <li className="home-hero__bubble">ボーカルが埋もれる...</li>
           </ul>
-          <p className="home-hero__catch">ミックス、一人で悩んでない？</p>
-          <p className="home-hero__sub">アドバイスをもらって前に進もう</p>
-          <button className="home-hero__cta" onClick={() => navigate('/auth')}>
+          <p className="home-hero__catch">曲づくりの悩み、一人で抱えてない？</p>
+          <p className="home-hero__sub">AI作曲・DTM・ミックスの質問をすぐ相談できる</p>
+          <button className="home-hero__cta" onClick={() => navigate('/auth?mode=register')}>
             無料ではじめる
           </button>
 
@@ -326,7 +326,7 @@ export function HomePage() {
 
       <button
         className="fab"
-        onClick={() => navigate(firebaseUser ? '/create' : '/auth')}
+        onClick={() => navigate(firebaseUser ? '/create' : '/auth?mode=register')}
         aria-label="投稿する"
       >
         <span className="fab__label">悩みを投稿</span>

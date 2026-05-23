@@ -35,6 +35,102 @@ service cloud.firestore {
         && isCleanOptionalString(request.resource.data.imageUrl);
     }
 
+    function isOptionalString(value) {
+      return value == null || value is string;
+    }
+
+    function isOptionalNonNegativeInt(value) {
+      return value == null || (value is int && value >= 0);
+    }
+
+    function isValidPostSchema() {
+      return request.resource.data.keys().hasOnly([
+        'authorUid',
+        'authorDisplayName',
+        'authorPhotoUrl',
+        'body',
+        'worryGenre',
+        'musicGenre',
+        'daw',
+        'imageUrl',
+        'audioUrl',
+        'audioDurationSec',
+        'focusSecondSec',
+        'updatedAt',
+        'isSolved',
+        'bestAnswerCommentId',
+        'deleted',
+        'questionType',
+        'isPriority',
+        'likeCount',
+        'createdAt'
+      ]);
+    }
+
+    function isValidPostCreateData() {
+      return isValidPostSchema()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorDisplayName is string
+        && isOptionalString(request.resource.data.authorPhotoUrl)
+        && isCleanPostBody()
+        && isOptionalString(request.resource.data.worryGenre)
+        && isOptionalString(request.resource.data.musicGenre)
+        && isOptionalString(request.resource.data.daw)
+        && isOptionalString(request.resource.data.audioUrl)
+        && isOptionalNonNegativeInt(request.resource.data.audioDurationSec)
+        && isOptionalNonNegativeInt(request.resource.data.focusSecondSec)
+        && request.resource.data.isSolved == false
+        && request.resource.data.bestAnswerCommentId == null
+        && request.resource.data.deleted == false
+        && request.resource.data.questionType == 'open'
+        && request.resource.data.isPriority == false
+        && request.resource.data.likeCount == 0
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isPostOwnerContentUpdate() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'body',
+          'worryGenre',
+          'musicGenre',
+          'daw',
+          'imageUrl',
+          'audioUrl',
+          'audioDurationSec',
+          'focusSecondSec',
+          'updatedAt'
+        ])
+        && isCleanPostBody()
+        && isOptionalString(request.resource.data.worryGenre)
+        && isOptionalString(request.resource.data.musicGenre)
+        && isOptionalString(request.resource.data.daw)
+        && isOptionalString(request.resource.data.audioUrl)
+        && isOptionalNonNegativeInt(request.resource.data.audioDurationSec)
+        && isOptionalNonNegativeInt(request.resource.data.focusSecondSec)
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isPostAuthorProfileSyncUpdate() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'authorDisplayName',
+          'authorPhotoUrl'
+        ])
+        && request.resource.data.authorDisplayName is string
+        && isOptionalString(request.resource.data.authorPhotoUrl);
+    }
+
+    function isPostSolvedStatusUpdate() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'isSolved',
+          'bestAnswerCommentId',
+          'updatedAt'
+        ])
+        && request.resource.data.isSolved == true
+        && request.resource.data.bestAnswerCommentId is string
+        && request.resource.data.updatedAt is timestamp;
+    }
+
     // users: 公開プロフィールは読み取り可。作成/更新は本人のみ。
     match /users/{uid} {
       allow read: if true;
@@ -56,13 +152,17 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if isSignedIn()
-        && request.resource.data.authorUid == request.auth.uid
-        && isCleanPostBody();
+        && isValidPostCreateData();
 
       allow update: if isSignedIn()
         && resource.data.authorUid == request.auth.uid
         && request.resource.data.authorUid == resource.data.authorUid
-        && isCleanPostBody();
+        && isValidPostSchema()
+        && (
+          isPostOwnerContentUpdate()
+          || isPostAuthorProfileSyncUpdate()
+          || isPostSolvedStatusUpdate()
+        );
 
       allow delete: if isSignedIn()
         && resource.data.authorUid == request.auth.uid;

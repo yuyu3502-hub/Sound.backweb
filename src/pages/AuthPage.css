@@ -82,6 +82,17 @@
   gap: 24px;
 }
 
+.auth-entry-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d1fae5;
+  background: rgba(30, 215, 96, 0.14);
+  border: 1px solid rgba(30, 215, 96, 0.36);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
 /* タブ */
 .auth-tabs {
   display: flex;

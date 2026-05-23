@@ -545,7 +545,9 @@ export function PostDetailPage() {
   // FABクリック: 未ログインなら認証画面へ、ログイン済みはフォーム開閉
   const handleFabClick = () => {
     if (!firebaseUser) {
-      navigate('/auth');
+      navigate('/auth?mode=register', {
+        state: { message: 'コメントするには無料登録が必要です。' },
+      });
       return;
     }
     setShowCommentForm((prev) => {
@@ -628,6 +630,7 @@ export function PostDetailPage() {
             {post.worryGenre && <span className="detail-tag">{post.worryGenre}</span>}
             {post.musicGenre && <span className="detail-tag">{post.musicGenre}</span>}
             {post.daw && <span className="detail-tag">{post.daw}</span>}
+            {post.isOfficialSample && <span className="detail-tag detail-tag--sample">運営サンプル</span>}
             {post.isSolved && <span className="detail-tag detail-tag--solved">解決済み</span>}
             <span className="detail-date">{formatDate(post.createdAt)}</span>
             {postIsEdited && <span className="detail-edited-date">編集: {formatDate(post.updatedAt)}</span>}

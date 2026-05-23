@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -41,15 +41,23 @@ function generateUserId() {
 }
 
 export function AuthPage() {
-  const [tab, setTab] = useState('login'); // 'login' | 'register'
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const initialMode = useMemo(() => {
+    const mode = new URLSearchParams(location.search).get('mode');
+    return mode === 'register' ? 'register' : 'login';
+  }, [location.search]);
+
+  const [tab, setTab] = useState(initialMode); // 'login' | 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate();
   const { setUserData } = useAuth();
+  const entryMessage = location.state?.message ?? '';
 
   const resetForm = () => {
     setEmail('');
@@ -146,6 +154,8 @@ export function AuthPage() {
       </header>
 
       <main className="auth-main">
+        {entryMessage && <p className="auth-entry-message">{entryMessage}</p>}
+
         {/* タブ */}
         <div className="auth-tabs">
           <button

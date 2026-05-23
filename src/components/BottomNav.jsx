@@ -50,7 +50,9 @@ export function BottomNav({ active, onHomeClick }) {
 
   const handleNotifications = () => {
     if (!firebaseUser) {
-      navigate('/auth');
+      navigate('/auth?mode=register', {
+        state: { message: '通知を見るには無料登録が必要です。' },
+      });
       return;
     }
     navigate('/notifications');

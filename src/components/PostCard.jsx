@@ -17,6 +17,7 @@ export function PostCard({
   const isSolved = Boolean(post.isSolved || post.bestAnswerCommentId);
   const isOfficialSample = Boolean(post.isOfficialSample);
   const authorPhotoUrl = authorPhotoUrlOverride || post.authorPhotoUrl || null;
+  const displayName = post.authorDisplayName?.trim() || 'ユーザー';
   const durationSec = Number(post.audioDurationSec ?? 0);
   const focusSecondSec = Number(post.focusSecondSec ?? -1);
   const hasFocusSecond = Number.isFinite(focusSecondSec) && focusSecondSec >= 0;
@@ -88,7 +89,7 @@ export function PostCard({
     if (!isPlaying) onPlay(post.id);
   };
 
-  const initial = post.authorDisplayName?.[0]?.toUpperCase() ?? '?';
+  const initial = displayName[0]?.toUpperCase() ?? '?';
 
   return (
     <div className={`post-card ${isOfficialSample ? 'post-card--sample' : ''}`}>
@@ -107,7 +108,7 @@ export function PostCard({
             <div className="post-card__avatar-fallback">{initial}</div>
           )}
         </span>
-        <span className="post-card__display-name">{post.authorDisplayName}</span>
+        <span className="post-card__display-name">{displayName}</span>
         {isOfficialSample && <span className="post-card__sample-badge">運営サンプル</span>}
         {showSolvedBadge && isSolved && (
           <span className="post-card__solved-badge">解決済み</span>
