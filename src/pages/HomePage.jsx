@@ -11,47 +11,31 @@ import { getCachedAvatarMetaByUids, mergeAvatarMetaCache } from '../utils/avatar
 import { fetchReplyCountByPostIds } from '../utils/replyCountCache';
 import './HomePage.css';
 
-const GUEST_GENRE_OPTIONS = ['AI作曲', 'DTM', 'その他'];
-const GUEST_GENRE_KEY = 'soundback_guest_genre';
-
-function classifyGuestGenre(post) {
-  const worryGenre = String(post.worryGenre ?? '');
-  const daw = String(post.daw ?? '');
-  const body = String(post.body ?? '').toLowerCase();
-  const musicGenre = String(post.musicGenre ?? '').toLowerCase();
-
-  if (worryGenre === 'AI作曲') {
-    return 'AI作曲';
+function scheduleWhenIdle(task) {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    const idleId = window.requestIdleCallback(task, { timeout: 1200 });
+    return () => window.cancelIdleCallback(idleId);
   }
 
-  if (/(ai|生成|suno|udio|vocaloid|ボカロ)/i.test(body) || /ai|ボカロ|vocaloid/i.test(musicGenre)) {
-    return 'AI作曲';
-  }
-
-  if (worryGenre === 'DAW操作' || daw) {
-    return 'DTM';
-  }
-
-  return 'その他';
+  const timeoutId = window.setTimeout(task, 120);
+  return () => window.clearTimeout(timeoutId);
 }
 
 export function HomePage() {
+  const [showStudyMessage, setShowStudyMessage] = useState(false);
+  const [studyInput, setStudyInput] = useState('');
   const { posts, loading, error, hasMore, loadingMore, fetchMore, refresh } =
     usePosts();
   const [currentPlayingId, setCurrentPlayingId] = useState(null);
   const [authorPhotoByUid, setAuthorPhotoByUid] = useState({});
   const [specialAuthorByUid, setSpecialAuthorByUid] = useState({});
   const [replyCountByPostId, setReplyCountByPostId] = useState({});
-  const [guestGenre, setGuestGenre] = useState(() => {
-    if (typeof window === 'undefined') return null;
-    const saved = sessionStorage.getItem(GUEST_GENRE_KEY);
-    return saved && GUEST_GENRE_OPTIONS.includes(saved) ? saved : null;
-  });
   const { firebaseUser, userData } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
+    let cancelScheduledTask = null;
 
     const fetchAuthorPhotos = async () => {
       const uniqueAuthorUids = [...new Set(posts.map((post) => post.authorUid).filter(Boolean))];
@@ -122,15 +106,19 @@ export function HomePage() {
       }
     };
 
-    fetchAuthorPhotos();
+    cancelScheduledTask = scheduleWhenIdle(() => {
+      fetchAuthorPhotos();
+    });
 
     return () => {
       cancelled = true;
+      if (cancelScheduledTask) cancelScheduledTask();
     };
   }, [posts]);
 
   useEffect(() => {
     let cancelled = false;
+    let cancelScheduledTask = null;
 
     const fetchReplyCounts = async () => {
       const postIds = posts.map((post) => post.id).filter(Boolean);
@@ -147,10 +135,13 @@ export function HomePage() {
       }
     };
 
-    fetchReplyCounts();
+    cancelScheduledTask = scheduleWhenIdle(() => {
+      fetchReplyCounts();
+    });
 
     return () => {
       cancelled = true;
+      if (cancelScheduledTask) cancelScheduledTask();
     };
   }, [posts]);
 
@@ -163,26 +154,6 @@ export function HomePage() {
     navigate(`/post/${postId}`);
   };
 
-  const clearGuestGenre = () => {
-    setGuestGenre(null);
-    sessionStorage.removeItem(GUEST_GENRE_KEY);
-  };
-
-  const handleGuestGenreSelect = (genre) => {
-    if (guestGenre === genre) {
-      clearGuestGenre();
-      return;
-    }
-    setGuestGenre(genre);
-    sessionStorage.setItem(GUEST_GENRE_KEY, genre);
-  };
-
-  const visiblePosts = firebaseUser || !guestGenre
-    ? posts
-    : posts.filter((post) => classifyGuestGenre(post) === guestGenre);
-
-  const showGuestFilteredEmpty = !firebaseUser && Boolean(guestGenre) && !loading && !error && visiblePosts.length === 0;
-
   return (
     <div className="home-page">
       <header className="home-header">
@@ -194,7 +165,7 @@ export function HomePage() {
           </h1>
           <button
             className="home-header__avatar-btn"
-            onClick={() => navigate(firebaseUser ? '/mypage' : '/auth?mode=register')}
+            onClick={() => navigate(firebaseUser ? '/mypage' : '/auth')}
             aria-label="マイページ"
           >
             {userData?.photoUrl ? (
@@ -221,39 +192,35 @@ export function HomePage() {
             <li className="home-hero__bubble">音がスカスカ…</li>
             <li className="home-hero__bubble">ボーカルが埋もれる...</li>
           </ul>
-          <p className="home-hero__catch">曲づくりの悩み、一人で抱えてない？</p>
-          <p className="home-hero__sub">AI作曲・DTM・ミックスの質問をすぐ相談できる</p>
-          <button className="home-hero__cta" onClick={() => navigate('/auth?mode=register')}>
+          <p className="home-hero__catch">ミックス、一人で悩んでない？</p>
+          <p className="home-hero__sub">アドバイスをもらって前に進もう</p>
+          <button className="home-hero__cta" onClick={() => navigate('/auth')}>
             無料ではじめる
           </button>
-
-          <div className="home-guest-genre">
-            <p className="home-guest-genre__title">気になるジャンルを選んで投稿を見る</p>
-            <div className="home-guest-genre__chips">
-              <button
-                type="button"
-                className={`home-guest-genre__chip ${guestGenre === null ? 'is-active' : ''}`}
-                onClick={clearGuestGenre}
-              >
-                すべて
-              </button>
-              {GUEST_GENRE_OPTIONS.map((genre) => (
-                <button
-                  key={genre}
-                  type="button"
-                  className={`home-guest-genre__chip ${guestGenre === genre ? 'is-active' : ''}`}
-                  onClick={() => handleGuestGenreSelect(genre)}
-                >
-                  {genre}
-                </button>
-              ))}
-            </div>
-            {!guestGenre && <p className="home-guest-genre__note">最新の投稿を表示中</p>}
-          </div>
         </div>
       )}
 
       <main className="home-main">
+        <div style={{ marginBottom: 12 }}>
+          <button onClick={() => setShowStudyMessage((prev) => !prev)}>
+            {showStudyMessage ? 'メッセージを隠す' : 'メッセージを表示'}
+          </button>
+          {showStudyMessage && <p>Reactのstateが動いた！</p>}
+
+          <div style={{ marginTop: 12 }}>
+            <input
+              type="text"
+              value={studyInput}
+              onChange={(event) => setStudyInput(event.target.value)}
+              placeholder="ここに文字を入力"
+              style={{ padding: '8px 10px', width: '100%', maxWidth: 320 }}
+            />
+            <p style={{ marginTop: 8 }}>入力中: {studyInput || '（まだ未入力）'}</p>
+            <p>文字数: {studyInput.length}</p>
+            <button onClick={() => setStudyInput('')}>入力をクリア</button>
+          </div>
+        </div>
+
         {loading && <p className="home-state">読み込み中...</p>}
 
         {error && (
@@ -266,25 +233,14 @@ export function HomePage() {
           </div>
         )}
 
-        {!loading && !error && !showGuestFilteredEmpty && visiblePosts.length === 0 && (
+        {!loading && !error && posts.length === 0 && (
           <p className="home-state">投稿はまだありません。</p>
         )}
 
-        {!firebaseUser && !guestGenre && posts.length > 0 && (
-          <p className="home-state home-state--compact">ジャンルを選ぶと、あなた向けに絞り込めます。</p>
-        )}
-
-        {showGuestFilteredEmpty && (
-          <div className="home-state home-state--compact">
-            <p>このジャンルの投稿は、読み込み済み分にはまだありません。</p>
-            {hasMore && <p>さらに探すと見つかる可能性があります。</p>}
-          </div>
-        )}
-
-        {visiblePosts.length > 0 && (
+        {posts.length > 0 && (
           <>
             <ul className="home-post-list">
-              {visiblePosts.map((post) => (
+              {posts.map((post) => (
                 <li key={post.id} onClick={() => handleCardClick(post.id)}>
                   <PostCard
                     post={post}
@@ -310,26 +266,16 @@ export function HomePage() {
             )}
           </>
         )}
-
-        {visiblePosts.length === 0 && hasMore && !loading && !error && (
-          <button
-            className="home-load-more"
-            onClick={fetchMore}
-            disabled={loadingMore}
-          >
-            {loadingMore ? '読み込み中...' : 'さらに探す'}
-          </button>
-        )}
       </main>
 
       <BottomNav active="home" onHomeClick={handleHomeClick} />
 
       <button
         className="fab"
-        onClick={() => navigate(firebaseUser ? '/create' : '/auth?mode=register')}
+        onClick={() => navigate(firebaseUser ? '/create' : '/auth')}
         aria-label="投稿する"
       >
-        <span className="fab__label">{firebaseUser ? '悩みを投稿' : '登録して投稿'}</span>
+        <span className="fab__label">悩みを投稿</span>
       </button>
     </div>
   );
