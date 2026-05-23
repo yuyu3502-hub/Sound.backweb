@@ -13,6 +13,7 @@ export function PostCard({
   const audioRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [lastSeekReturnTime, setLastSeekReturnTime] = useState(null);
+  const [hasLoadedAudio, setHasLoadedAudio] = useState(false);
   const hasAllGenres = Boolean(post.worryGenre && post.musicGenre && post.daw);
   const isSolved = Boolean(post.isSolved || post.bestAnswerCommentId);
   const isOfficialSample = Boolean(post.isOfficialSample);
@@ -65,6 +66,7 @@ export function PostCard({
 
   const handlePlayToggle = (e) => {
     e.stopPropagation();
+    if (!isPlaying) setHasLoadedAudio(true);
     onPlay(isPlaying ? null : post.id);
   };
 
@@ -86,7 +88,10 @@ export function PostCard({
     setLastSeekReturnTime(audio.currentTime);
     audio.currentTime = clampedTarget;
     setProgress((audio.currentTime / audio.duration) * 100);
-    if (!isPlaying) onPlay(post.id);
+    if (!isPlaying) {
+      setHasLoadedAudio(true);
+      onPlay(post.id);
+    }
   };
 
   const initial = displayName[0]?.toUpperCase() ?? '?';
@@ -177,7 +182,8 @@ export function PostCard({
           </div>
           <audio
             ref={audioRef}
-            src={post.audioUrl}
+            src={hasLoadedAudio || isPlaying ? post.audioUrl : undefined}
+            preload="none"
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleEnded}
           />
