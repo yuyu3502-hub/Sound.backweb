@@ -111,7 +111,7 @@
   height: 2px;
   left: -30vw;
   border-radius: 99px;
-  opacity: 0.2;
+  opacity: 0;
   filter: blur(0.7px);
   background: linear-gradient(90deg, rgba(67, 138, 255, 0), rgba(67, 138, 255, 0.9), rgba(170, 106, 255, 0.9), rgba(67, 138, 255, 0));
   box-shadow: 0 0 8px rgba(78, 126, 255, 0.18);
@@ -243,7 +243,7 @@
   inset: -20%;
   background-repeat: repeat;
   mix-blend-mode: screen;
-  opacity: 0.44;
+  opacity: 0;
 }
 
 .ranking-bg__bokeh--near {
@@ -254,7 +254,7 @@
   background-size: 220px 220px, 270px 270px, 210px 210px, 300px 300px;
   animation: drift-near 28s linear infinite;
   filter: blur(2.2px);
-  opacity: 0.22;
+  opacity: 0;
 }
 
 .ranking-bg__bokeh--far {
@@ -264,7 +264,7 @@
   background-size: 360px 360px, 420px 420px, 320px 320px;
   animation: drift-far 44s linear infinite reverse;
   filter: blur(11px);
-  opacity: 0.15;
+  opacity: 0;
 }
 
 .ranking-header {
