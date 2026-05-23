@@ -15,7 +15,7 @@ import { BottomNav } from '../components/BottomNav';
 import './CreatePostPage.css';
 
 const WORRY_GENRES = [
-  'ミックス', 'アレンジ', 'マスタリング', 'DAW操作',
+  'ミックス', 'アレンジ', 'マスタリング', 'DAW操作', 'AI作曲',
   'メロディ', 'コード進行', 'リズム', 'その他',
 ];
 const MUSIC_GENRES = [

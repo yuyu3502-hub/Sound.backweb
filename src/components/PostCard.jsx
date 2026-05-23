@@ -15,6 +15,7 @@ export function PostCard({
   const [lastSeekReturnTime, setLastSeekReturnTime] = useState(null);
   const hasAllGenres = Boolean(post.worryGenre && post.musicGenre && post.daw);
   const isSolved = Boolean(post.isSolved || post.bestAnswerCommentId);
+  const isOfficialSample = Boolean(post.isOfficialSample);
   const authorPhotoUrl = authorPhotoUrlOverride || post.authorPhotoUrl || null;
   const durationSec = Number(post.audioDurationSec ?? 0);
   const focusSecondSec = Number(post.focusSecondSec ?? -1);
@@ -90,7 +91,7 @@ export function PostCard({
   const initial = post.authorDisplayName?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <div className="post-card">
+    <div className={`post-card ${isOfficialSample ? 'post-card--sample' : ''}`}>
       <div className="post-card__header">
         <span className={`post-card__avatar-shell ${isSpecialAvatar ? 'post-card__avatar-shell--special' : ''}`}>
           {authorPhotoUrl ? (
@@ -107,6 +108,7 @@ export function PostCard({
           )}
         </span>
         <span className="post-card__display-name">{post.authorDisplayName}</span>
+        {isOfficialSample && <span className="post-card__sample-badge">サンプル</span>}
         {showSolvedBadge && isSolved && (
           <span className="post-card__solved-badge">解決済み</span>
         )}

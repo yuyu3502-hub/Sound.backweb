@@ -11,6 +11,26 @@ import { getCachedAvatarMetaByUids, mergeAvatarMetaCache } from '../utils/avatar
 import { fetchReplyCountByPostIds } from '../utils/replyCountCache';
 import './HomePage.css';
 
+const GUEST_GENRE_OPTIONS = ['AI作曲', 'DTM', 'その他'];
+const GUEST_GENRE_KEY = 'soundback_guest_genre';
+
+function classifyGuestGenre(post) {
+  const worryGenre = String(post.worryGenre ?? '');
+  const daw = String(post.daw ?? '');
+  const body = String(post.body ?? '').toLowerCase();
+  const musicGenre = String(post.musicGenre ?? '').toLowerCase();
+
+  if (/(ai|生成|suno|udio|vocaloid|ボカロ)/i.test(body) || /ai|ボカロ|vocaloid/i.test(musicGenre)) {
+    return 'AI作曲';
+  }
+
+  if (worryGenre === 'DAW操作' || daw) {
+    return 'DTM';
+  }
+
+  return 'その他';
+}
+
 export function HomePage() {
   const { posts, loading, error, hasMore, loadingMore, fetchMore, refresh } =
     usePosts();
@@ -18,6 +38,11 @@ export function HomePage() {
   const [authorPhotoByUid, setAuthorPhotoByUid] = useState({});
   const [specialAuthorByUid, setSpecialAuthorByUid] = useState({});
   const [replyCountByPostId, setReplyCountByPostId] = useState({});
+  const [guestGenre, setGuestGenre] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = sessionStorage.getItem(GUEST_GENRE_KEY);
+    return saved && GUEST_GENRE_OPTIONS.includes(saved) ? saved : null;
+  });
   const { firebaseUser, userData } = useAuth();
   const navigate = useNavigate();
 
@@ -134,6 +159,15 @@ export function HomePage() {
     navigate(`/post/${postId}`);
   };
 
+  const handleGuestGenreSelect = (genre) => {
+    setGuestGenre(genre);
+    sessionStorage.setItem(GUEST_GENRE_KEY, genre);
+  };
+
+  const visiblePosts = firebaseUser || !guestGenre
+    ? posts
+    : posts.filter((post) => classifyGuestGenre(post) === guestGenre);
+
   return (
     <div className="home-page">
       <header className="home-header">
@@ -177,6 +211,22 @@ export function HomePage() {
           <button className="home-hero__cta" onClick={() => navigate('/auth')}>
             無料ではじめる
           </button>
+
+          <div className="home-guest-genre">
+            <p className="home-guest-genre__title">気になるジャンルを選んで投稿を見る</p>
+            <div className="home-guest-genre__chips">
+              {GUEST_GENRE_OPTIONS.map((genre) => (
+                <button
+                  key={genre}
+                  type="button"
+                  className={`home-guest-genre__chip ${guestGenre === genre ? 'is-active' : ''}`}
+                  onClick={() => handleGuestGenreSelect(genre)}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -193,14 +243,18 @@ export function HomePage() {
           </div>
         )}
 
-        {!loading && !error && posts.length === 0 && (
+        {!loading && !error && visiblePosts.length === 0 && (
           <p className="home-state">投稿はまだありません。</p>
         )}
 
-        {posts.length > 0 && (
+        {!firebaseUser && !guestGenre && (
+          <p className="home-state">ジャンルを選ぶと、あなた向けの投稿を表示します。</p>
+        )}
+
+        {visiblePosts.length > 0 && (
           <>
             <ul className="home-post-list">
-              {posts.map((post) => (
+              {visiblePosts.map((post) => (
                 <li key={post.id} onClick={() => handleCardClick(post.id)}>
                   <PostCard
                     post={post}

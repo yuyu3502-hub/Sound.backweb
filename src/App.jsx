@@ -19,14 +19,14 @@ const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(
 
 function AnalyticsRouteTracker() {
   const location = useLocation();
-  const { firebaseUser, isLoading } = useAuth();
+  const { firebaseUser, isLoading, userData } = useAuth();
 
   useEffect(() => {
     logPageView(location.pathname, location.search);
-    if (!isLoading && firebaseUser?.uid) {
+    if (!isLoading && firebaseUser?.uid && userData && userData.role !== 'admin') {
       trackPageViewCounter(location.pathname, location.search, firebaseUser.uid);
     }
-  }, [firebaseUser?.uid, isLoading, location.pathname, location.search]);
+  }, [firebaseUser?.uid, isLoading, location.pathname, location.search, userData]);
 
   return null;
 }

@@ -7,10 +7,20 @@
   transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
 }
 
+.post-card--sample {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.09), rgba(255, 255, 255, 0.02));
+}
+
 .post-card:hover {
   border-color: rgba(255, 255, 255, 0.1);
   background: #1d1d1d;
   transform: translateY(-2px);
+}
+
+.post-card--sample:hover {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.14), rgba(255, 255, 255, 0.03));
 }
 
 .post-card__header {
@@ -87,8 +97,22 @@
   white-space: nowrap;
 }
 
-.post-card__solved-badge {
+.post-card__sample-badge {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fef3c7;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.16);
+  flex-shrink: 0;
+}
+
+.post-card__solved-badge {
+  margin-left: 8px;
   display: inline-flex;
   align-items: center;
   border-radius: 999px;

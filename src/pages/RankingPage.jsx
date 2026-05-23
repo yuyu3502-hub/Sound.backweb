@@ -151,6 +151,7 @@ export function RankingPage() {
                   )}
                 </span>
                 <div className="ranking-user">
+                  {row.rank === 1 && <p className="ranking-champion-title">👑 MIX KING</p>}
                   <p className="ranking-name">{row.displayName}</p>
                   <p className="ranking-id">@{row.userId}</p>
                 </div>

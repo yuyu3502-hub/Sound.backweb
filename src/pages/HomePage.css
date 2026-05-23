@@ -243,6 +243,46 @@
   transform: translateY(-1px);
 }
 
+.home-guest-genre {
+  margin-top: 14px;
+  width: 100%;
+  max-width: 460px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.home-guest-genre__title {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.home-guest-genre__chips {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.home-guest-genre__chip {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f5f5f5;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+}
+
+.home-guest-genre__chip.is-active {
+  border-color: rgba(30, 215, 96, 0.6);
+  background: rgba(30, 215, 96, 0.2);
+  color: #c8ffdf;
+}
+
 /* メインコンテンツ */
 .home-main {
   flex: 1;
