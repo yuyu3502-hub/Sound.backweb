@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, doc, getCountFromServer, getDoc, query, Timestamp, where } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getCountFromServer,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
@@ -33,6 +46,27 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatUpdatedAt(value) {
+  if (!value || typeof value.toDate !== 'function') {
+    return '-';
+  }
+  return value.toDate().toLocaleString('ja-JP', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function statusLabel(status) {
+  if (status === 'queued') return '生成済み';
+  if (status === 'needs_review') return '要確認';
+  if (status === 'approved') return '承認済み';
+  if (status === 'rejected') return '差し戻し';
+  if (status === 'posted') return '投稿済み';
+  return status || '-';
+}
+
 function MetricCard({ label, value, sublabel }) {
   return (
     <article className="admin-metric-card">
@@ -50,6 +84,9 @@ export function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stats, setStats] = useState(null);
+  const [xDrafts, setXDrafts] = useState([]);
+  const [xDraftError, setXDraftError] = useState('');
+  const [updatingDraftId, setUpdatingDraftId] = useState('');
 
   useEffect(() => {
     if (isLoading) return;
@@ -67,11 +104,13 @@ export function AdminDashboardPage() {
     const fetchStats = async () => {
       setLoading(true);
       setError('');
+      setXDraftError('');
 
       try {
         const usersRef = collection(db, 'users');
         const postsRef = collection(db, 'posts');
         const commentsRef = collection(db, 'comments');
+        const xDraftsRef = collection(db, 'x_post_drafts');
         const pageViewSummaryRef = doc(db, 'analytics_summary', 'pageViews');
 
         const now = new Date();
@@ -91,6 +130,7 @@ export function AdminDashboardPage() {
           bestAnswerSnap,
           pageViewSummarySnap,
           todayPageViewSnap,
+          xDraftsSnap,
         ] = await Promise.all([
           getCountFromServer(usersRef),
           getCountFromServer(query(usersRef, where('createdAt', '>=', Timestamp.fromDate(today)))),
@@ -102,6 +142,7 @@ export function AdminDashboardPage() {
           getCountFromServer(query(commentsRef, where('isBestAnswer', '==', true))),
           getDoc(pageViewSummaryRef),
           getDoc(todayPageViewRef),
+          getDocs(query(xDraftsRef, orderBy('createdAt', 'desc'), limit(40))),
         ]);
 
         const dayStarts = Array.from({ length: DAYS_TO_SHOW }, (_, index) => addDays(last7Start, index));
@@ -158,6 +199,10 @@ export function AdminDashboardPage() {
         const totalPosts = Number(totalPostsSnap.data().count ?? 0);
         const solvedPosts = Number(solvedPostsSnap.data().count ?? 0);
         const solvedRate = totalPosts === 0 ? 0 : (solvedPosts / totalPosts) * 100;
+        const draftRows = xDraftsSnap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
 
         if (!cancelled) {
           setStats({
@@ -177,10 +222,14 @@ export function AdminDashboardPage() {
             commentTrend,
             pageViewTrend,
           });
+          setXDrafts(draftRows);
         }
       } catch (err) {
         console.error(err);
-        if (!cancelled) setError('運営データの取得に失敗しました。');
+        if (!cancelled) {
+          setError('運営データの取得に失敗しました。');
+          setXDraftError('X原稿の取得に失敗しました。');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -192,6 +241,38 @@ export function AdminDashboardPage() {
       cancelled = true;
     };
   }, [firebaseUser, isLoading, navigate, userData?.role]);
+
+  const updateXDraftStatus = async (draftId, nextStatus) => {
+    if (!draftId || !nextStatus || !firebaseUser?.uid) return;
+    setUpdatingDraftId(draftId);
+    setXDraftError('');
+
+    try {
+      await updateDoc(doc(db, 'x_post_drafts', draftId), {
+        status: nextStatus,
+        updatedBy: firebaseUser.uid,
+        updatedAt: serverTimestamp(),
+      });
+
+      setXDrafts((current) =>
+        current.map((item) =>
+          item.id === draftId
+            ? {
+                ...item,
+                status: nextStatus,
+                updatedBy: firebaseUser.uid,
+                updatedAt: Timestamp.now(),
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      setXDraftError('X原稿の更新に失敗しました。');
+    } finally {
+      setUpdatingDraftId('');
+    }
+  };
 
   if (isLoading || !firebaseUser) return null;
 
@@ -276,6 +357,75 @@ export function AdminDashboardPage() {
                   </ul>
                 </section>
               </div>
+            </section>
+
+            <section className="admin-section">
+              <h2 className="admin-section__title">X原稿キュー</h2>
+              {xDraftError && <p className="admin-state admin-state--error">{xDraftError}</p>}
+              {!xDraftError && xDrafts.length === 0 && <p className="admin-state">原稿はまだありません。</p>}
+
+              {xDrafts.length > 0 && (
+                <div className="admin-xdraft-list">
+                  {xDrafts.map((draft) => {
+                    const isWorking = updatingDraftId === draft.id;
+                    const status = typeof draft.status === 'string' ? draft.status : '';
+                    const qualityFlags = Array.isArray(draft.qualityFlags) ? draft.qualityFlags : [];
+
+                    return (
+                      <article className="admin-xdraft-card" key={draft.id}>
+                        <div className="admin-xdraft-card__head">
+                          <p className="admin-xdraft-card__meta">
+                            {draft.date || '-'} {draft.slotTime || '--:--'} / {draft.sourceType || '-'}
+                          </p>
+                          <span className={`admin-xdraft-status admin-xdraft-status--${status || 'unknown'}`}>
+                            {statusLabel(status)}
+                          </span>
+                        </div>
+
+                        <h3 className="admin-xdraft-card__title">{draft.headline || '見出しなし'}</h3>
+                        <p className="admin-xdraft-card__body">{draft.postText || '-'}</p>
+
+                        <div className="admin-xdraft-card__subline">
+                          <span>URL: {draft.sourceUrl || '-'}</span>
+                          <span>更新: {formatUpdatedAt(draft.updatedAt)}</span>
+                        </div>
+
+                        {qualityFlags.length > 0 && (
+                          <ul className="admin-xdraft-flags">
+                            {qualityFlags.map((flag) => (
+                              <li key={`${draft.id}-${flag}`}>{flag}</li>
+                            ))}
+                          </ul>
+                        )}
+
+                        <div className="admin-xdraft-actions">
+                          <button
+                            className="admin-xdraft-btn admin-xdraft-btn--approve"
+                            onClick={() => updateXDraftStatus(draft.id, 'approved')}
+                            disabled={isWorking}
+                          >
+                            承認
+                          </button>
+                          <button
+                            className="admin-xdraft-btn admin-xdraft-btn--review"
+                            onClick={() => updateXDraftStatus(draft.id, 'needs_review')}
+                            disabled={isWorking}
+                          >
+                            要確認
+                          </button>
+                          <button
+                            className="admin-xdraft-btn admin-xdraft-btn--reject"
+                            onClick={() => updateXDraftStatus(draft.id, 'rejected')}
+                            disabled={isWorking}
+                          >
+                            差し戻し
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </>
         )}

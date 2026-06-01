@@ -9,7 +9,7 @@ Currently, two official plugins are available:
 
 ## React Compiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The React Compiler is not enabled on this template becasnstallation).
 
 ## Expanding the ESLint configuration
 
@@ -52,6 +52,18 @@ Body 例:
 			"daw": "Logic Pro"
 		},
 		{
+			"body": "AIで作ったコード進行が自然に聞こえない。どこを直せばいい？",
+			"worryGenre": "AI作曲",
+			"musicGenre": "EDM",
+			"daw": "Logic Pro"
+		},
+		{
+			"body": "DAW上での打ち込みが固くなる。人間っぽくするコツはある？",
+			"worryGenre": "DAW操作",
+			"musicGenre": "Rock",
+			"daw": "Cubase"
+		},
+		{
 			"body": "低音が濁る。キックとベースの住み分けで最初に見るポイントは？",
 			"worryGenre": "ミックス",
 			"musicGenre": "EDM",
@@ -73,6 +85,12 @@ Body 例:
 		},
 		{
 			"body": "サビ前でテンションを 1 段上げると、持ち上がりが出やすいです。"
+		},
+		{
+			"body": "AI作曲は、まず1小節のまとまりを整えると全体が自然になります。"
+		},
+		{
+			"body": "DAW操作は、ショートカットを1つずつ固定していくと作業が速くなります。"
 		}
 	]
 }
@@ -80,7 +98,7 @@ Body 例:
 
 注意:
 
-- `postDrafts` と `commentDrafts` はそれぞれ最大 3 件まで処理されます。
+- `postDrafts` と `commentDrafts` はそれぞれ最大 10 件まで処理されます。
 - `commentDrafts[].postId` を指定しない場合は、今回作成した投稿または直近投稿に自動で紐づきます。
 - `dryRun: true` を渡すと保存せず件数検証だけ行えます。
 
@@ -128,3 +146,55 @@ Body 例:
 ### 4. まずは手動テスト
 
 `dryRun: true` で 200 が返ることを確認後、`dryRun` を外して本投入してください。
+
+## n8n で X 投稿下書きを運営ページに連携する
+
+`seedXDrafts` エンドポイントを使うと、n8nで生成したX投稿原稿をFirestoreの `x_post_drafts` に保存できます。
+
+### 1. API 仕様
+
+HTTP POST:
+
+`https://<region>-<project-id>.cloudfunctions.net/seedXDrafts`
+
+Header:
+
+- `Content-Type: application/json`
+- `x-automation-key: <N8N_AUTOMATION_KEY>`
+
+Body 例:
+
+```json
+{
+	"createdBy": "n8n",
+	"drafts": [
+		{
+			"date": "2026-05-31",
+			"slotTime": "09:00",
+			"sourceType": "AI",
+			"cardId": "tc_ai_001",
+			"postText": "新AIボーカルモデルが感情タグ対応...",
+			"sourceUrl": "https://example.com/news/ai",
+			"headline": "AIボーカル更新",
+			"status": "queued",
+			"qualityFlags": []
+		}
+	]
+}
+```
+
+注意:
+
+- `drafts` は最大 20 件まで処理されます。
+- 必須項目は `date`, `slotTime`, `sourceType`, `cardId`, `postText` です。
+- `sourceType` は `AI | DAW | Trend | Singer` のみ保存されます。
+
+### 2. 運営ページでの承認フロー
+
+管理者は運営ダッシュボードで `x_post_drafts` を確認し、次のステータスに更新できます。
+
+- `approved`: 投稿キューに進める
+- `needs_review`: 要修正
+- `rejected`: 差し戻し
+
+実投稿処理は別ワークフローで `approved` のみを対象に実行してください。

@@ -8,7 +8,10 @@ admin.initializeApp();
 const db = admin.firestore();
 const REGION = 'asia-northeast1';
 const RANKING_COLLECTION = 'rankingBestAnswers';
-const DAILY_SAMPLE_LIMIT = 3;
+const DAILY_SAMPLE_LIMIT = 10;
+const X_DRAFT_LIMIT = 20;
+const X_SOURCE_TYPES = new Set(['AI', 'DAW', 'Trend', 'Singer']);
+const X_DRAFT_STATUS = new Set(['queued', 'needs_review', 'approved', 'rejected', 'posted']);
 
 const WORRY_GENRES = new Set([
   'ミックス',
@@ -66,12 +69,80 @@ function ensureDraftArray(value) {
   return Array.isArray(value) ? value.slice(0, DAILY_SAMPLE_LIMIT) : [];
 }
 
+function ensureXDraftArray(value) {
+  return Array.isArray(value) ? value.slice(0, X_DRAFT_LIMIT) : [];
+}
+
 function isNonEmptyArray(value) {
   return Array.isArray(value) && value.length > 0;
 }
 
 function getClientIp(req) {
   return req.get('x-forwarded-for') || req.ip || 'unknown';
+}
+
+function normalizeXSourceType(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return X_SOURCE_TYPES.has(normalized) ? normalized : null;
+}
+
+function normalizeXSlotTime(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(normalized) ? normalized : null;
+}
+
+function normalizeXDate(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
+}
+
+function normalizeXStatus(value) {
+  if (typeof value !== 'string') return 'queued';
+  const normalized = value.trim();
+  return X_DRAFT_STATUS.has(normalized) ? normalized : 'queued';
+}
+
+function normalizeQualityFlags(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeText(item, 120))
+    .filter(Boolean)
+    .slice(0, 20);
+}
+
+function buildXDraftPayload(rawDraft, createdBy) {
+  const date = normalizeXDate(rawDraft?.date);
+  const slotTime = normalizeXSlotTime(rawDraft?.slotTime);
+  const sourceType = normalizeXSourceType(rawDraft?.sourceType);
+  const cardId = normalizeOptionalText(rawDraft?.cardId, 120);
+  const postText = normalizeText(rawDraft?.postText, 500);
+  const sourceUrl = normalizeOptionalText(rawDraft?.sourceUrl, 400);
+  const headline = normalizeOptionalText(rawDraft?.headline, 160);
+  const status = normalizeXStatus(rawDraft?.status);
+  const qualityFlags = normalizeQualityFlags(rawDraft?.qualityFlags);
+
+  if (!date || !slotTime || !sourceType || !cardId || !postText) {
+    return null;
+  }
+
+  return {
+    date,
+    slotTime,
+    sourceType,
+    cardId,
+    postText,
+    sourceUrl,
+    headline,
+    status,
+    qualityFlags,
+    createdBy,
+    updatedBy: createdBy,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
 }
 
 async function getUserProfile(uid, fallbackDisplayName) {
@@ -462,6 +533,72 @@ exports.seedDailySamples = onRequest(
     } catch (err) {
       logger.error('seedDailySamples failed', err);
       res.status(500).json({ error: 'seedDailySamples failed' });
+    }
+  }
+);
+
+exports.seedXDrafts = onRequest(
+  {
+    region: REGION,
+    timeoutSeconds: 120,
+    memory: '512MiB',
+  },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const configuredKey = process.env.N8N_AUTOMATION_KEY ?? '';
+    if (!configuredKey) {
+      res.status(500).json({ error: 'N8N_AUTOMATION_KEY is not configured' });
+      return;
+    }
+
+    const requestKey = req.get('x-automation-key') ?? '';
+    if (requestKey !== configuredKey) {
+      logger.warn('seedXDrafts forbidden', { ip: getClientIp(req) });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    try {
+      const body = req.body && typeof req.body === 'object' ? req.body : {};
+      const drafts = ensureXDraftArray(body.drafts ?? body.postDrafts);
+      const createdBy = normalizeOptionalText(body.createdBy, 80) ?? 'n8n';
+
+      if (!isNonEmptyArray(drafts)) {
+        res.status(400).json({ error: 'drafts is required' });
+        return;
+      }
+
+      const payloads = drafts
+        .map((draft) => buildXDraftPayload(draft, createdBy))
+        .filter(Boolean);
+
+      if (!isNonEmptyArray(payloads)) {
+        res.status(400).json({ error: 'No valid drafts in payload' });
+        return;
+      }
+
+      const createdIds = [];
+      for (const payload of payloads) {
+        const ref = await db.collection('x_post_drafts').add(payload);
+        createdIds.push(ref.id);
+      }
+
+      logger.info('seedXDrafts success', {
+        drafts: payloads.length,
+      });
+
+      res.status(200).json({
+        ok: true,
+        draftsCreated: payloads.length,
+        draftIds: createdIds,
+      });
+    } catch (err) {
+      logger.error('seedXDrafts failed', err);
+      res.status(500).json({ error: 'seedXDrafts failed' });
     }
   }
 );

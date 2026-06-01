@@ -9,6 +9,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     function postDoc(postId) {
       return get(/databases/$(database)/documents/posts/$(postId));
     }
@@ -242,6 +247,14 @@ service cloud.firestore {
     match /analytics_summary/{docId} {
       allow read: if true;
       allow create, update: if isSignedIn() && docId == 'pageViews';
+      allow delete: if false;
+    }
+
+    // x_post_drafts: X投稿用の下書き。管理者のみ閲覧・更新可。
+    match /x_post_drafts/{draftId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
       allow delete: if false;
     }
   }
