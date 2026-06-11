@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { logPageView, trackPageViewCounter } from './firebase';
 import { useAuth } from './context/AuthContext';
+import { hasAdminAccess } from './utils/adminAccess';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
@@ -23,7 +24,7 @@ function AnalyticsRouteTracker() {
 
   useEffect(() => {
     logPageView(location.pathname, location.search);
-    if (!isLoading && firebaseUser?.uid && userData && userData.role !== 'admin') {
+    if (!isLoading && firebaseUser?.uid && userData && !hasAdminAccess(firebaseUser, userData)) {
       trackPageViewCounter(location.pathname, location.search, firebaseUser.uid);
     }
   }, [firebaseUser?.uid, isLoading, location.pathname, location.search, userData]);

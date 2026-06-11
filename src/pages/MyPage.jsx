@@ -8,6 +8,7 @@ import {
 import { auth, db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
+import { hasAdminAccess } from '../utils/adminAccess';
 import './MyPage.css';
 
 const MY_POSTS_LIMIT = 60;
@@ -111,6 +112,7 @@ export function MyPage() {
 
   const unsolved = posts.filter((p) => !p.isSolved);
   const solved = posts.filter((p) => p.isSolved);
+  const canAccessAdmin = hasAdminAccess(firebaseUser, userData);
 
   const initial = userData?.displayName?.[0]?.toUpperCase() ?? '?';
 
@@ -157,7 +159,7 @@ export function MyPage() {
           >
             編集
           </button>
-          {userData?.role === 'admin' && (
+          {canAccessAdmin && (
             <button
               className="mypage-profile__admin-btn"
               onClick={() => navigate('/admin')}

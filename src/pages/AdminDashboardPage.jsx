@@ -17,6 +17,7 @@ import {
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
+import { hasAdminAccess } from '../utils/adminAccess';
 import './AdminDashboardPage.css';
 
 const DAYS_TO_SHOW = 7;
@@ -94,7 +95,7 @@ export function AdminDashboardPage() {
       navigate('/auth');
       return;
     }
-    if (userData?.role !== 'admin') {
+    if (!hasAdminAccess(firebaseUser, userData)) {
       navigate('/mypage');
       return;
     }
@@ -240,7 +241,7 @@ export function AdminDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [firebaseUser, isLoading, navigate, userData?.role]);
+  }, [firebaseUser, isLoading, navigate, userData]);
 
   const updateXDraftStatus = async (draftId, nextStatus) => {
     if (!draftId || !nextStatus || !firebaseUser?.uid) return;
