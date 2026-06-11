@@ -636,6 +636,8 @@ export function PostDetailPage() {
             {postIsEdited && <span className="detail-edited-date">編集: {formatDate(post.updatedAt)}</span>}
           </div>
 
+          {post.title && <h2 className="detail-post-title">{post.title}</h2>}
+
           <p className="detail-body">{renderTextWithTimestampLinks(post.body, 'post-body')}</p>
 
           {post.imageUrl && (

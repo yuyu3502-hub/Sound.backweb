@@ -127,6 +127,15 @@
   flex-shrink: 0;
 }
 
+.post-card__title {
+  margin: 2px 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #ffffff;
+  word-break: break-word;
+}
+
 .post-card__body {
   font-size: 15px;
   line-height: 1.6;

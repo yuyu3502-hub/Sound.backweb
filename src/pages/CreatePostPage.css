@@ -65,6 +65,30 @@
   opacity: 0.7;
 }
 
+/* タイトル */
+.create-input-wrap {
+  position: relative;
+}
+
+.create-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 12px;
+  padding-right: 70px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.create-input:focus {
+  border-color: var(--accent);
+}
+
 /* 本文 */
 .create-body-wrap {
   position: relative;

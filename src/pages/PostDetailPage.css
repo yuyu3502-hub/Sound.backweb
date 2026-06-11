@@ -222,6 +222,15 @@
   color: #9ca3af;
 }
 
+.detail-post-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #ffffff;
+  word-break: break-word;
+}
+
 .detail-body {
   font-size: 15px;
   line-height: 1.7;

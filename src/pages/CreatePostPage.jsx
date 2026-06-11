@@ -55,6 +55,7 @@ export function CreatePostPage() {
   const { postId } = useParams();
   const isEditMode = Boolean(postId);
 
+  const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [worryGenre, setWorryGenre] = useState('');
   const [musicGenre, setMusicGenre] = useState('');
@@ -118,6 +119,7 @@ export function CreatePostPage() {
 
         if (cancelled) return;
 
+        setTitle(postData.title ?? '');
         setBody(postData.body ?? '');
         setWorryGenre(postData.worryGenre ?? '');
         setMusicGenre(postData.musicGenre ?? '');
@@ -308,7 +310,12 @@ export function CreatePostPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const trimmedTitle = title.trim();
     const trimmedBody = body.trim();
+    if (!trimmedTitle) {
+      setError('タイトルを入力してください。');
+      return;
+    }
     if (!trimmedBody) {
       setError('本文を入力してください。');
       return;
@@ -349,6 +356,7 @@ export function CreatePostPage() {
           : null;
 
       const basePayload = {
+        title: trimmedTitle,
         body: trimmedBody,
         worryGenre: worryGenre || null,
         musicGenre: musicGenre || null,
@@ -405,6 +413,23 @@ export function CreatePostPage() {
 
       <main className="create-main">
         <form className="create-form" onSubmit={handleSubmit}>
+
+          {/* タイトル */}
+          <label className="create-label">
+            タイトル <span className="create-required">必須</span>
+          </label>
+          <div className="create-input-wrap">
+            <input
+              className="create-input"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+              placeholder="例: サビのミックスでボーカルが埋もれます"
+            />
+            <span className={`create-char-count ${title.length >= 80 ? 'create-char-count--max' : ''}`}>
+              {title.length}/80
+            </span>
+          </div>
 
           {/* 本文 */}
           <label className="create-label">

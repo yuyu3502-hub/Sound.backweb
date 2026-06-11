@@ -117,7 +117,8 @@ export function SearchPage() {
       if (kw) {
         const lower = kw.toLowerCase();
         docs = docs.filter((p) =>
-          (p.body ?? '').toLowerCase().includes(lower)
+          (p.title ?? '').toLowerCase().includes(lower)
+          || (p.body ?? '').toLowerCase().includes(lower)
         );
       }
 

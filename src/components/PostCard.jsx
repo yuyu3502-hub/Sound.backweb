@@ -120,6 +120,8 @@ export function PostCard({
         )}
       </div>
 
+      {post.title && <h3 className="post-card__title">{post.title}</h3>}
+
       <p className="post-card__body">{post.body}</p>
 
       <div className="post-card__meta-row">
