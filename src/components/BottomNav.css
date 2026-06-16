@@ -111,3 +111,9 @@
 .bottom-nav__btn--ranking-active svg {
   filter: drop-shadow(0 0 6px rgba(92, 160, 255, 0.54)) drop-shadow(0 0 10px rgba(161, 111, 255, 0.28));
 }
+
+@media (min-width: 981px) {
+  .bottom-nav {
+    display: none;
+  }
+}

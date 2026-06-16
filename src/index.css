@@ -126,6 +126,15 @@ ul {
   line-height: 1.2;
 }
 
+@media (min-width: 981px) {
+  .fab {
+    bottom: 36px;
+    right: 36px;
+    background: #d93a00;
+    color: #fff;
+  }
+}
+
 
 
 /* ===== END ===== */

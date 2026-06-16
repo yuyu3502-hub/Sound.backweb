@@ -3,14 +3,15 @@
   flex-direction: column;
   min-height: 100dvh;
   padding-bottom: calc(var(--nav-height) + 80px);
+  background: #050607;
 }
 
 .detail-header {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: rgba(5, 6, 7, 0.94);
+  border-bottom: 1px solid #24292d;
   padding: 12px 24px;
   display: flex;
   align-items: center;
@@ -31,11 +32,19 @@
 
 .detail-main {
   flex: 1;
-  padding: 16px;
-  max-width: 720px;
+  padding: 16px 22px 28px;
+  max-width: 1120px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 328px;
+  gap: 28px;
+  align-items: start;
+}
+
+.detail-content {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -44,10 +53,10 @@
 /* 投稿エリア */
 .detail-post {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+  background: #151718;
+  border: 1px solid #2a3034;
+  border-radius: 8px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -192,8 +201,8 @@
 
 .detail-tag {
   font-size: 12px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
+  background: #20282e;
+  border: 1px solid #303940;
   border-radius: 20px;
   padding: 2px 10px;
   color: var(--text-secondary);
@@ -243,6 +252,67 @@
   border-radius: 8px;
   max-height: 320px;
   object-fit: cover;
+}
+
+.detail-sidebar {
+  position: sticky;
+  top: 74px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-community,
+.detail-rules {
+  border: 1px solid #24292d;
+  border-radius: 8px;
+  background: #0a0d0f;
+  padding: 18px;
+}
+
+.detail-community h2,
+.detail-rules h2 {
+  margin: 0 0 12px;
+  color: #f4f7f9;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.detail-rules h2 {
+  color: #94a3ad;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-community p,
+.detail-rules li {
+  color: #a8b4bd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.detail-community dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.detail-community dt {
+  color: #f4f7f9;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.detail-community dd {
+  color: #87949d;
+  font-size: 12px;
+}
+
+.detail-rules ol {
+  margin: 0;
+  padding-left: 20px;
 }
 
 /* 音源プレイヤー */
@@ -797,4 +867,28 @@
   justify-content: center;
   min-height: 100dvh;
   color: var(--text-secondary);
+}
+
+@media (max-width: 980px) {
+  .detail-main {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .detail-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .detail-comment--reply {
+    margin-left: calc(var(--reply-depth, 1) * 10px);
+  }
+
+  .detail-post,
+  .detail-comment-form,
+  .detail-community,
+  .detail-rules {
+    border-radius: 8px;
+  }
 }

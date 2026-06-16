@@ -1,6 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import './PostCard.css';
 
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return 'たった今';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const diffMs = Date.now() - date.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (!Number.isFinite(diffMs) || diffMs < minute) return 'たった今';
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)}分前`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}時間前`;
+  return `${Math.floor(diffMs / day)}日前`;
+}
+
+function makeStableScore(postId, replyCount) {
+  const seed = String(postId ?? 'soundback').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return Math.max(1, (seed % 84) + Math.min(replyCount * 2, 34));
+}
+
 export function PostCard({
   post,
   isPlaying,
@@ -23,6 +42,9 @@ export function PostCard({
   const focusSecondSec = Number(post.focusSecondSec ?? -1);
   const hasFocusSecond = Number.isFinite(focusSecondSec) && focusSecondSec >= 0;
   const safeReplyCount = Math.max(0, Number(replyCount) || 0);
+  const score = makeStableScore(post.id, safeReplyCount);
+  const communityName = post.worryGenre ? `r/${post.worryGenre}` : 'r/Soundback';
+  const relativeTime = formatRelativeTime(post.createdAt);
 
   const formatSeconds = (value) => {
     const sec = Math.max(0, Math.floor(value));
@@ -113,7 +135,11 @@ export function PostCard({
             <div className="post-card__avatar-fallback">{initial}</div>
           )}
         </span>
+        <span className="post-card__community">{communityName}</span>
+        <span className="post-card__meta-dot">・</span>
         <span className="post-card__display-name">{displayName}</span>
+        <span className="post-card__meta-dot">・</span>
+        <span className="post-card__time">{relativeTime}</span>
         {isOfficialSample && <span className="post-card__sample-badge">運営サンプル</span>}
         {showSolvedBadge && isSolved && (
           <span className="post-card__solved-badge">解決済み</span>
@@ -191,6 +217,25 @@ export function PostCard({
           />
         </div>
       )}
+
+      <div className="post-card__actions" aria-label="投稿アクション">
+        <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="賛成">
+          <span aria-hidden="true">↑</span>
+          <strong>{score}</strong>
+          <span aria-hidden="true">↓</span>
+        </button>
+        <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="返信数">
+          <span aria-hidden="true">○</span>
+          <strong>{safeReplyCount}</strong>
+        </button>
+        <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="保存">
+          <span aria-hidden="true">◇</span>
+        </button>
+        <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="共有">
+          <span aria-hidden="true">↗</span>
+          <strong>共有</strong>
+        </button>
+      </div>
     </div>
   );
 }

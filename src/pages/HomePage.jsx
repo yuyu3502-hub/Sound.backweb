@@ -31,6 +31,8 @@ export function HomePage() {
   const [authorPhotoByUid, setAuthorPhotoByUid] = useState({});
   const [specialAuthorByUid, setSpecialAuthorByUid] = useState({});
   const [replyCountByPostId, setReplyCountByPostId] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortMode, setSortMode] = useState('best');
   const [guestGenre, setGuestGenre] = useState(() => {
     if (typeof window === 'undefined') return null;
     const saved = window.sessionStorage.getItem(GUEST_GENRE_KEY);
@@ -197,21 +199,66 @@ export function HomePage() {
     }
   };
 
-  const visiblePosts = firebaseUser || !guestGenre
+  const guestFilteredPosts = firebaseUser || !guestGenre
     ? posts
     : posts.filter((post) => classifyGuestGenre(post) === guestGenre);
 
+  const searchedPosts = searchTerm.trim()
+    ? guestFilteredPosts.filter((post) => {
+        const needle = searchTerm.trim().toLowerCase();
+        return [post.title, post.body, post.worryGenre, post.musicGenre, post.daw, post.authorDisplayName]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(needle));
+      })
+    : guestFilteredPosts;
+
+  const visiblePosts = [...searchedPosts].sort((a, b) => {
+    if (sortMode === 'new') {
+      return (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0);
+    }
+    if (sortMode === 'comments') {
+      return (replyCountByPostId[b.id] ?? 0) - (replyCountByPostId[a.id] ?? 0);
+    }
+    return ((replyCountByPostId[b.id] ?? 0) * 2 + (b.audioUrl ? 8 : 0)) -
+      ((replyCountByPostId[a.id] ?? 0) * 2 + (a.audioUrl ? 8 : 0));
+  });
+
   const showGuestFilteredEmpty = !firebaseUser && Boolean(guestGenre) && !loading && !error && visiblePosts.length === 0;
+  const communityStats = {
+    members: posts.length > 0 ? `${Math.max(1200, posts.length * 148).toLocaleString('ja-JP')}` : '1,248',
+    weeklyPosts: posts.length > 0 ? `${Math.max(posts.length * 3, 24)}` : '24',
+    answers: Object.values(replyCountByPostId).reduce((sum, count) => sum + count, 0),
+  };
 
   return (
     <div className="home-page">
       <header className="home-header">
         <div className="home-header__inner">
+          <button className="home-header__menu" aria-label="メニュー">
+            <span />
+            <span />
+            <span />
+          </button>
           <h1 className="home-header__logo" aria-label="Sound.back">
             <span className="home-header__logo-main">Sound</span>
             <span className="home-header__logo-dot">.</span>
             <span className="home-header__logo-sub">back</span>
           </h1>
+          <label className="home-header__search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Sound.back を検索してください"
+            />
+          </label>
+          <button
+            className="home-header__create"
+            onClick={() => navigate(firebaseUser ? '/create' : '/auth')}
+          >
+            ＋ 作成
+          </button>
           <button
             className="home-header__avatar-btn"
             onClick={() => navigate(firebaseUser ? '/mypage' : '/auth')}
@@ -274,59 +321,126 @@ export function HomePage() {
       )}
 
       <main className="home-main">
-        {loading && <p className="home-state">読み込み中...</p>}
-
-        {error && (
-          <div className="home-state">
-            <p>投稿の読み込みに失敗しました。</p>
-            <p className="home-state__error-detail">{error?.message ?? 'エラー内容を取得できませんでした。'}</p>
-            <button className="home-retry-btn" onClick={refresh}>
-              再読み込み
+        <section className="home-feed" aria-label="投稿フィード">
+          <div className="home-feed-toolbar">
+            <div className="home-feed-toolbar__sort" aria-label="並び替え">
+              <button
+                type="button"
+                className={sortMode === 'best' ? 'is-active' : ''}
+                onClick={() => setSortMode('best')}
+              >
+                賛成票順
+              </button>
+              <button
+                type="button"
+                className={sortMode === 'new' ? 'is-active' : ''}
+                onClick={() => setSortMode('new')}
+              >
+                新着
+              </button>
+              <button
+                type="button"
+                className={sortMode === 'comments' ? 'is-active' : ''}
+                onClick={() => setSortMode('comments')}
+              >
+                返信数
+              </button>
+            </div>
+            <button className="home-feed-toolbar__view" type="button" aria-label="カード表示">
+              ▭
             </button>
           </div>
-        )}
 
-        {!loading && !error && visiblePosts.length === 0 && (
-          <p className="home-state">投稿はまだありません。</p>
-        )}
+          {loading && <p className="home-state">読み込み中...</p>}
 
-        {!firebaseUser && !guestGenre && (
-          <p className="home-state">ジャンルを選ぶと、あなた向けの投稿を表示します。</p>
-        )}
-
-        {showGuestFilteredEmpty && (
-          <p className="home-state">このジャンルではまだ投稿が見つかりません。別のジャンルも試してみてください。</p>
-        )}
-
-        {visiblePosts.length > 0 && (
-          <>
-            <ul className="home-post-list">
-              {visiblePosts.map((post) => (
-                <li key={post.id} onClick={() => handleCardClick(post.id)}>
-                  <PostCard
-                    post={post}
-                    isPlaying={currentPlayingId === post.id}
-                    onPlay={setCurrentPlayingId}
-                    showSolvedBadge
-                    authorPhotoUrlOverride={authorPhotoByUid[post.authorUid] ?? null}
-                    isSpecialAvatar={Boolean(specialAuthorByUid[post.authorUid])}
-                    replyCount={replyCountByPostId[post.id] ?? 0}
-                  />
-                </li>
-              ))}
-            </ul>
-
-            {hasMore && (
-              <button
-                className="home-load-more"
-                onClick={fetchMore}
-                disabled={loadingMore}
-              >
-                {loadingMore ? '読み込み中...' : 'もっと見る'}
+          {error && (
+            <div className="home-state">
+              <p>投稿の読み込みに失敗しました。</p>
+              <p className="home-state__error-detail">{error?.message ?? 'エラー内容を取得できませんでした。'}</p>
+              <button className="home-retry-btn" onClick={refresh}>
+                再読み込み
               </button>
-            )}
-          </>
-        )}
+            </div>
+          )}
+
+          {!loading && !error && visiblePosts.length === 0 && (
+            <p className="home-state">投稿はまだありません。</p>
+          )}
+
+          {showGuestFilteredEmpty && (
+            <p className="home-state">この条件ではまだ投稿が見つかりません。別のジャンルや検索語も試してみてください。</p>
+          )}
+
+          {visiblePosts.length > 0 && (
+            <>
+              <ul className="home-post-list">
+                {visiblePosts.map((post) => (
+                  <li key={post.id} onClick={() => handleCardClick(post.id)}>
+                    <PostCard
+                      post={post}
+                      isPlaying={currentPlayingId === post.id}
+                      onPlay={setCurrentPlayingId}
+                      showSolvedBadge
+                      authorPhotoUrlOverride={authorPhotoByUid[post.authorUid] ?? null}
+                      isSpecialAvatar={Boolean(specialAuthorByUid[post.authorUid])}
+                      replyCount={replyCountByPostId[post.id] ?? 0}
+                    />
+                  </li>
+                ))}
+              </ul>
+
+              {hasMore && (
+                <button
+                  className="home-load-more"
+                  onClick={fetchMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? '読み込み中...' : 'もっと見る'}
+                </button>
+              )}
+            </>
+          )}
+        </section>
+
+        <aside className="home-sidebar" aria-label="コミュニティ情報">
+          <section className="home-community">
+            <div className="home-community__banner" />
+            <div className="home-community__body">
+              <div className="home-community__title-row">
+                <h2>r/Soundback</h2>
+                <button onClick={() => navigate(firebaseUser ? '/create' : '/auth')}>参加</button>
+              </div>
+              <p>
+                ミックス、AI作曲、DTMの悩みを投稿して、音を聴いた人から具体的な返信をもらうコミュニティ。
+              </p>
+              <dl className="home-community__stats">
+                <div>
+                  <dt>{communityStats.members}</dt>
+                  <dd>メンバー</dd>
+                </div>
+                <div>
+                  <dt>{communityStats.weeklyPosts}</dt>
+                  <dd>週間投稿</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <section className="home-sidebar-panel">
+            <h2>情報源</h2>
+            <p>返信合計 {communityStats.answers.toLocaleString('ja-JP')} 件</p>
+            <p>投稿候補を読み、AI回答を確認し、n8n に流す候補を選ぶためのフィード。</p>
+          </section>
+
+          <section className="home-sidebar-panel">
+            <h2>ルール</h2>
+            <ol>
+              <li>音源や悩みの文脈を添える</li>
+              <li>具体的に聴いた箇所を書く</li>
+              <li>宣伝だけの投稿は控える</li>
+            </ol>
+          </section>
+        </aside>
       </main>
 
       <BottomNav active="home" onHomeClick={handleHomeClick} />

@@ -583,8 +583,9 @@ export function PostDetailPage() {
       </header>
 
       <main className="detail-main">
-        {/* 投稿情報 */}
-        <section className="detail-post">
+        <div className="detail-content">
+          {/* 投稿情報 */}
+          <section className="detail-post">
           {isPostAuthor && (
             <>
               <button
@@ -685,11 +686,11 @@ export function PostDetailPage() {
               />
             </div>
           )}
-        </section>
+          </section>
 
-        {/* コメントフォーム（インライン） */}
-        {showCommentForm && (
-          <section className="detail-comment-form">
+          {/* コメントフォーム（インライン） */}
+          {showCommentForm && (
+            <section className="detail-comment-form">
             <form onSubmit={handleCommentSubmit}>
               <div className="detail-comment-form__body-wrap">
                 {replyTarget && (
@@ -768,11 +769,11 @@ export function PostDetailPage() {
                 </button>
               </div>
             </form>
-          </section>
-        )}
+            </section>
+          )}
 
-        {/* コメント一覧 */}
-        <section className="detail-comments">
+          {/* コメント一覧 */}
+          <section className="detail-comments">
           <h2 className="detail-comments__title">
             コメント{comments.length > 0 && `（${comments.length}）`}
           </h2>
@@ -868,7 +869,34 @@ export function PostDetailPage() {
               );
             })}
           </ul>
-        </section>
+          </section>
+        </div>
+
+        <aside className="detail-sidebar" aria-label="コミュニティ情報">
+          <section className="detail-community">
+            <h2>r/Soundback</h2>
+            <p>音源の悩みを投稿して、聴いた人から具体的な返信をもらうコミュニティ。</p>
+            <dl>
+              <div>
+                <dt>{comments.length}</dt>
+                <dd>この投稿の返信</dd>
+              </div>
+              <div>
+                <dt>{post.isSolved ? '解決済み' : '受付中'}</dt>
+                <dd>ステータス</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="detail-rules">
+            <h2>コメントのヒント</h2>
+            <ol>
+              <li>気になった秒数を書く</li>
+              <li>良い点と直す点を分ける</li>
+              <li>機材や環境を決めつけない</li>
+            </ol>
+          </section>
+        </aside>
       </main>
 
       <BottomNav active="" />
