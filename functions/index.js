@@ -10,6 +10,7 @@ const REGION = 'asia-northeast1';
 const RANKING_COLLECTION = 'rankingBestAnswers';
 const DAILY_SAMPLE_LIMIT = 10;
 const X_DRAFT_LIMIT = 20;
+const DAILY_SAMPLE_SEED_ENABLED = process.env.ENABLE_DAILY_SAMPLE_SEED === 'true';
 const X_SOURCE_TYPES = new Set(['AI', 'DAW', 'Trend', 'Singer']);
 const X_DRAFT_STATUS = new Set(['queued', 'needs_review', 'approved', 'rejected', 'posted']);
 
@@ -439,6 +440,12 @@ exports.seedDailySamples = onRequest(
     memory: '512MiB',
   },
   async (req, res) => {
+    if (!DAILY_SAMPLE_SEED_ENABLED) {
+      logger.info('seedDailySamples disabled');
+      res.status(403).json({ error: 'seedDailySamples is disabled' });
+      return;
+    }
+
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
       return;
