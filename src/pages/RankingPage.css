@@ -755,3 +755,83 @@
   font-weight: 700;
   color: #9ef2c1;
 }
+
+@media (min-width: 769px) {
+  .ranking-page {
+    background: #0b0f12;
+  }
+
+  .ranking-bg {
+    opacity: 0.18;
+  }
+
+  .ranking-header {
+    background: rgba(11, 15, 18, 0.92);
+    border-bottom-color: #2b3035;
+  }
+
+  .ranking-header__inner {
+    max-width: 960px;
+    padding: 12px 24px;
+  }
+
+  .ranking-title {
+    font-size: 17px;
+    letter-spacing: 0;
+  }
+
+  .ranking-main {
+    max-width: 960px;
+    padding: 20px 24px 48px;
+  }
+
+  .ranking-list {
+    gap: 0;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #11161a;
+  }
+
+  .ranking-item,
+  .ranking-item--champion {
+    border: none;
+    border-bottom: 1px solid #30363d;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    backdrop-filter: none;
+  }
+
+  .ranking-item:last-child {
+    border-bottom: none;
+  }
+
+  .ranking-item:hover,
+  .ranking-item--champion:hover {
+    background: #151a1e;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .ranking-item--champion::before,
+  .ranking-item--champion::after {
+    display: none;
+  }
+
+  .ranking-champion-title {
+    color: #ffb199;
+    text-shadow: none;
+  }
+
+  .ranking-rank--top,
+  .ranking-score__value {
+    color: #ffb199;
+  }
+
+  .ranking-avatar-fallback {
+    background: #d93a00;
+    color: #fff;
+  }
+}

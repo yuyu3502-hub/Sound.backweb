@@ -326,3 +326,97 @@
   color: var(--text-secondary);
   padding: 48px 0;
 }
+
+@media (min-width: 769px) {
+  .mypage {
+    background: #0b0f12;
+    padding-bottom: 0;
+  }
+
+  .mypage-header {
+    background: rgba(11, 15, 18, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom-color: #2b3035;
+    padding: 10px 24px;
+  }
+
+  .mypage-back-btn {
+    border: 1px solid #343a40;
+    border-radius: var(--radius-pill);
+    background: #181c1f;
+    color: #d7dadc;
+    padding: 8px 12px;
+    font-weight: 700;
+  }
+
+  .mypage-title {
+    font-size: 16px;
+  }
+
+  .mypage-main {
+    max-width: 960px;
+    padding: 20px 24px 48px;
+    gap: 18px;
+  }
+
+  .mypage-profile {
+    background: #11161a;
+    border-color: #30363d;
+    border-radius: 8px;
+  }
+
+  .mypage-profile__avatar-fallback {
+    background: #d93a00;
+  }
+
+  .mypage-profile__edit-btn,
+  .mypage-profile__admin-btn,
+  .mypage-profile__logout-btn {
+    border-radius: var(--radius-pill);
+    background: #181c1f;
+  }
+
+  .mypage-section__title {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #30363d;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: #11161a;
+    color: #d7dadc;
+  }
+
+  .mypage-post-list {
+    gap: 0;
+    border: 1px solid #30363d;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    background: #11161a;
+  }
+
+  .mypage-post-card {
+    border: none;
+    border-bottom: 1px solid #30363d;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .mypage-post-card:last-child {
+    border-bottom: none;
+  }
+
+  .mypage-post-card:hover {
+    background: #151a1e;
+  }
+
+  .mypage-post-card__badge {
+    border-color: rgba(217, 58, 0, 0.5);
+    background: rgba(217, 58, 0, 0.12);
+    color: #ffb199;
+  }
+
+  .mypage-post-card__tag {
+    background: #1a2025;
+    border-color: #343a40;
+  }
+}

@@ -279,3 +279,78 @@
     flex-direction: column;
   }
 }
+
+@media (min-width: 769px) {
+  .admin-page {
+    background: #0b0f12;
+    padding-bottom: 0;
+  }
+
+  .admin-header {
+    background: rgba(11, 15, 18, 0.92);
+    border-bottom-color: #2b3035;
+    padding: 10px 24px;
+  }
+
+  .admin-back-btn {
+    border-color: #343a40;
+    background: #181c1f;
+    color: #d7dadc;
+    font-weight: 700;
+  }
+
+  .admin-title {
+    font-size: 17px;
+  }
+
+  .admin-main {
+    max-width: 1080px;
+    padding: 20px 24px 48px;
+  }
+
+  .admin-state,
+  .admin-metric-card,
+  .admin-trend-card,
+  .admin-xdraft-card {
+    background: #11161a;
+    border-color: #30363d;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .admin-section__title {
+    color: #d7dadc;
+  }
+
+  .admin-metric-card__value {
+    color: #f2f4f5;
+  }
+
+  .admin-xdraft-list {
+    gap: 0;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #11161a;
+  }
+
+  .admin-xdraft-card {
+    border: none;
+    border-bottom: 1px solid #30363d;
+    border-radius: 0;
+  }
+
+  .admin-xdraft-card:last-child {
+    border-bottom: none;
+  }
+
+  .admin-xdraft-btn {
+    background: #181c1f;
+    border-color: #343a40;
+  }
+
+  .admin-xdraft-btn--approve {
+    border-color: rgba(217, 58, 0, 0.55);
+    color: #ffb199;
+  }
+}

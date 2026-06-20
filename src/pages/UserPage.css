@@ -185,8 +185,75 @@
 }
 
 @media (min-width: 768px) {
+  .user-page {
+    background: #0b0f12;
+    padding-bottom: 0;
+  }
+
+  .user-page-header {
+    background: rgba(11, 15, 18, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom-color: #2b3035;
+    padding: 10px 24px;
+  }
+
+  .user-page-back-btn {
+    border: 1px solid #343a40;
+    border-radius: var(--radius-pill);
+    background: #181c1f;
+    color: #d7dadc;
+    padding: 8px 12px;
+    font-weight: 700;
+  }
+
+  .user-page-title {
+    font-size: 16px;
+  }
+
+  .user-page-main {
+    max-width: 960px;
+    padding: 20px 24px 48px;
+  }
+
+  .user-profile {
+    padding: 18px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    background: #11161a;
+  }
+
+  .user-profile__avatar-fallback {
+    background: #d93a00;
+  }
+
+  .user-posts-section {
+    padding: 18px 0 0;
+  }
+
+  .user-posts-heading {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #30363d;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: #11161a;
+    color: #d7dadc;
+  }
+
   .user-posts-list {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    gap: 0;
+    border: 1px solid #30363d;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    background: #11161a;
+  }
+
+  .user-posts-item {
+    border-bottom: 1px solid #30363d;
+  }
+
+  .user-posts-item:last-child {
+    border-bottom: none;
   }
 }

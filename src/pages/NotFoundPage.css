@@ -54,3 +54,33 @@
   background: var(--bg-input);
   border: 1px solid var(--border);
 }
+
+@media (min-width: 769px) {
+  .not-found-page {
+    background: #0b0f12;
+    padding-bottom: 0;
+  }
+
+  .not-found-main {
+    max-width: 520px;
+    min-height: 420px;
+    margin: 56px auto;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    background: #11161a;
+  }
+
+  .not-found-code {
+    color: #d93a00;
+  }
+
+  .not-found-btn {
+    background: #d93a00;
+    border-radius: var(--radius-pill);
+  }
+
+  .not-found-btn--ghost {
+    background: #181c1f;
+    border-color: #343a40;
+  }
+}
