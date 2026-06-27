@@ -11,13 +11,53 @@ export const PAIN_CATEGORIES = [
   { id: 'ai', label: 'AI作曲', description: 'Suno/Udio系、自然さ、修正、権利不安' },
 ];
 
-const item = (id, category, title, summary, tags, prompt) => ({
-  id,
-  category,
-  title,
-  summary,
-  tags,
-  prompt,
+const AI_ANSWER_GUIDES = {
+  mix: ['原因を「音量」「帯域」「定位」「空間」のどれかに絞る。', 'リファレンスと同じ音量にして、主役と邪魔している音を分けて聴く。', 'EQやコンプを足す前に、フェーダーとミュートで変化を確認する。'],
+  mastering: ['マスターだけで直そうとせず、ミックス段階のピークと低域を先に確認する。', 'LUFSやTrue Peakは用途別の目安として見て、聴感の歪みや密度も比べる。', '書き出し前に、頭切れ、末尾、ノイズ、モノ再生、複数環境をチェックする。'],
+  arrangement: ['まず曲をイントロ、A、B、サビ、ブレイクなどの役割で分ける。', '新しい音を足す前に、音数、音域、リズム密度、抜き差しで差を作る。', '1つのフックを残しながら、セクションごとに変化を1つだけ決める。'],
+  songwriting: ['メロディ、コード、歌詞、リズムを同時に直さず、違和感のある要素を1つ選ぶ。', '最高音、休符、反復、言葉のアクセントを見て、聴き手が覚える場所を作る。', '手癖から抜けたい時は、既存の一部だけを変えて比較する。'],
+  'sound-design': ['プリセットや素材をそのまま評価せず、曲中で主役か脇役かを決める。', '太さ、明るさ、広がり、動きのうち、足りない要素を1つだけ選んで加工する。', 'レイヤーや歪みを足したら、低域と中域が濁っていないか必ず確認する。'],
+  vocal: ['録音、編集、ピッチ、EQ、コンプ、空間を分けて確認する。', 'まず声の聞こえ方を決め、伴奏側に空き帯域や奥行きを作る。', '処理後は小音量でも言葉が伝わるか、歯擦音や部屋鳴りが目立たないか聴く。'],
+  daw: ['まずDAW上の見る場所を決め、ボタンやメニューを探す時間を減らす。', 'ショートカットは全部覚えず、今止まっている作業に関係するものだけ使う。', '操作を覚える時は、1曲の中で同じ手順を3回繰り返して定着させる。'],
+  workflow: ['原因をスキル不足ではなく、判断、準備、整理、公開不安のどれかに分ける。', '作業を「作る日」「直す日」「出す日」に分け、同じ日に全部判断しない。', '完成基準やテンプレを小さく決めて、迷う回数を減らす。'],
+  gear: ['買い足す前に、今困っている原因が機材、部屋、設定、使い方のどれかを切り分ける。', '用途、接続、予算、置き場所、将来の拡張性を並べて優先順位を決める。', 'レビューより、自分の制作で毎回起きる不便を基準に選ぶ。'],
+  ai: ['AIの出力を完成品として見ず、素材、構成案、仮歌、参照用のどれに使うか決める。', '人が直す場所をメロディ、歌詞、構成、音色、ミックスに分けて確認する。', '公開前に利用規約、商用利用、クレジット、素材の扱いを確認する。'],
+};
+
+const buildDefaultAiAnswer = ({ category, title, prompt }) => {
+  const guide = AI_ANSWER_GUIDES[category] ?? AI_ANSWER_GUIDES.workflow;
+  return [
+    `AI回答: 「${title}」は、まず原因を一度に直そうとしないのが大事です。`,
+    guide[0],
+    guide[1],
+    guide[2],
+    `相談する時は「${prompt}」に加えて、使っているDAW、ジャンル、参考曲、今試したことを書いておくと回答が具体的になります。`,
+  ].join('');
+};
+
+const item = (id, category, title, summary, tags, prompt, details = {}) => {
+  const base = {
+    id,
+    category,
+    title,
+    summary,
+    tags,
+    prompt,
+    ...details,
+  };
+
+  return {
+    ...base,
+    aiAnswer: details.aiAnswer ?? buildDefaultAiAnswer(base),
+  };
+};
+
+const dawGuide = ({ where, shortcuts, firstCheck }) => ({
+  operationGuide: {
+    where,
+    shortcuts,
+    firstCheck,
+  },
 });
 
 export const DTM_PAIN_LIBRARY = [
@@ -87,16 +127,56 @@ export const DTM_PAIN_LIBRARY = [
   item('vocal-009', 'vocal', 'ラップの言葉が前に出ない', 'アタック、倍音、ディレイ、低域処理が不足する悩み。', ['ラップ', '明瞭度', 'ボーカル'], 'ラップの言葉が埋もれます。前に出す処理を相談したいです。'),
   item('vocal-010', 'vocal', '仮歌から本歌に差し替えると印象が崩れる', '歌い方、キー、伴奏の隙間が仮歌前提になっている悩み。', ['仮歌', '本歌', 'アレンジ'], '本歌に差し替えたら曲の印象が変わりました。伴奏側で直すべき点を知りたいです。'),
 
-  item('daw-001', 'daw', 'AbletonのSession Viewから曲構成に移れない', 'クリップは作れるが、Arrangement Viewで曲として並べる段階で止まる悩み。', ['Ableton', 'Session View', '構成'], 'Abletonでループは作れますが曲構成にできません。並べ方を相談したいです。'),
-  item('daw-002', 'daw', 'FL Studioでミキサー整理が追いつかない', 'チャンネル、ミキサートラック、バス分けが増えて管理不能になる悩み。', ['FL Studio', 'ミキサー', '整理'], 'FLでトラック整理が崩れます。ミキサーの分け方を知りたいです。'),
-  item('daw-003', 'daw', 'Logicで録音と編集の流れが毎回止まる', 'テイク管理、コンピング、リージョン編集で迷う悩み。', ['Logic Pro', '録音', '編集'], 'Logicで録音後の編集が遅いです。効率の良い流れを知りたいです。'),
-  item('daw-004', 'daw', 'CPU負荷で再生が止まる', '重い音源やエフェクトを使い、フリーズ/バウンス判断が遅れる悩み。', ['CPU', 'フリーズ', 'バウンス'], 'CPUが重くて制作が止まります。どのタイミングでフリーズすべきですか？'),
-  item('daw-005', 'daw', 'レイテンシーで録音しづらい', 'バッファサイズ、低遅延モード、モニタリング設定で迷う悩み。', ['レイテンシー', '録音', '設定'], '録音時の遅れが気になります。設定で見るべき所を知りたいです。'),
-  item('daw-006', 'daw', 'オートメーションが増えて管理できない', 'ボリューム、フィルター、FX操作が散らかって後から直しにくい悩み。', ['オートメーション', '管理', 'DAW'], 'オートメーションが増えすぎました。整理方法を知りたいです。'),
-  item('daw-007', 'daw', 'プラグインを挿しすぎて原因が分からない', '改善目的が曖昧なまま処理が積み上がる悩み。', ['プラグイン', '原因特定', '処理'], 'プラグインを挿しすぎて何が効いているか分かりません。整理したいです。'),
-  item('daw-008', 'daw', 'テンプレートを作っても結局使わない', '自分の制作手順に合わないテンプレで、開始時の負荷が下がらない悩み。', ['テンプレート', '時短', '制作手順'], 'DAWテンプレを作っても使いません。自分に合う形を考えたいです。'),
-  item('daw-009', 'daw', 'MIDI打ち込みが人間っぽくならない', 'ベロシティ、タイミング、長さ、奏法の変化が足りない悩み。', ['MIDI', '打ち込み', 'ベロシティ'], '打ち込みが固く聴こえます。どこをズラす/変えるべきですか？'),
-  item('daw-010', 'daw', 'プロジェクトファイルが散らかって再開できない', '命名、色分け、バージョン管理、書き出し管理が弱い悩み。', ['整理', 'プロジェクト', '再開'], '昔のプロジェクトを開いても分かりません。整理ルールを作りたいです。'),
+  item('daw-001', 'daw', 'AbletonのSession Viewから曲構成に移れない', 'クリップは作れるが、Arrangement Viewで曲として並べる段階で止まる悩み。', ['Ableton', 'Session View', '構成'], 'Abletonでループは作れますが曲構成にできません。並べ方を相談したいです。', dawGuide({
+    where: ['画面右上のSession/Arrangement切替、またはTabで表示を切り替える。', '上部トランスポートの録音ボタンでSessionの演奏をArrangementへ記録する。', 'Arrangement Viewでクリップを小節単位に並べ、イントロ/展開/サビを先に作る。'],
+    shortcuts: ['Tab: Session View/Arrangement View切替', 'Space: 再生/停止', 'Cmd+E / Ctrl+E: クリップ分割', 'Cmd+F / Ctrl+F: Browser検索'],
+    firstCheck: ['8小節ループを複製して、ミュート/追加/抜き差しで3パートに分ける。'],
+  })),
+  item('daw-002', 'daw', 'FL Studioでミキサー整理が追いつかない', 'チャンネル、ミキサートラック、バス分けが増えて管理不能になる悩み。', ['FL Studio', 'ミキサー', '整理'], 'FLでトラック整理が崩れます。ミキサーの分け方を知りたいです。', dawGuide({
+    where: ['Channel Rackで各チャンネルを選び、右上のTrack番号をミキサー番号に合わせる。', 'F9でMixerを開き、Drums/Bass/Synth/Vocal/FXの順に色と名前を揃える。', '複数トラックをバスへ送る時はMixer下部のルーティング矢印を確認する。'],
+    shortcuts: ['F5: Playlist', 'F6: Channel Rack', 'F7: Piano Roll', 'F8: Browser', 'F9: Mixer'],
+    firstCheck: ['音が出ているチャンネルだけ先に番号を振り、未使用トラックは後で整理する。'],
+  })),
+  item('daw-003', 'daw', 'Logicで録音と編集の流れが毎回止まる', 'テイク管理、コンピング、リージョン編集で迷う悩み。', ['Logic Pro', '録音', '編集'], 'Logicで録音後の編集が遅いです。効率の良い流れを知りたいです。', dawGuide({
+    where: ['トラックヘッダのRを押して録音待機、上部トランスポートの録音ボタンで録る。', '同じ範囲を重ね録りするとテイクフォルダになり、リージョン左上からテイクを選べる。', 'リージョン選択後、再生ヘッド位置で分割して不要部分を消す。'],
+    shortcuts: ['R: 録音', 'Space: 再生/停止', 'Cmd+T: 再生ヘッド位置でリージョン分割', 'Cmd+K: ミュージックタイピング'],
+    firstCheck: ['録る前に小節範囲、クリック、入力ゲイン、録音待機の4点だけ確認する。'],
+  })),
+  item('daw-004', 'daw', 'CPU負荷で再生が止まる', '重い音源やエフェクトを使い、フリーズ/バウンス判断が遅れる悩み。', ['CPU', 'フリーズ', 'バウンス'], 'CPUが重くて制作が止まります。どのタイミングでフリーズすべきですか？', dawGuide({
+    where: ['DAWのオーディオ設定でBuffer Sizeを上げ、録音中だけ低く戻す。', '重い音源、リバーブ、リニアフェイズEQ、ピッチ補正を先に疑う。', 'トラックのFreeze/Flatten/Bounce in Placeで一時的に音声化する。'],
+    shortcuts: ['Ableton: トラック右クリック > Freeze Track', 'Logic: Track Header ComponentsでFreezeを表示', 'FL Studio: Tools > Macros > Switch smart disable for all plugins'],
+    firstCheck: ['重い原因を探す時は、マスターではなく各トラックを1つずつ無効化して確認する。'],
+  })),
+  item('daw-005', 'daw', 'レイテンシーで録音しづらい', 'バッファサイズ、低遅延モード、モニタリング設定で迷う悩み。', ['レイテンシー', '録音', '設定'], '録音時の遅れが気になります。設定で見るべき所を知りたいです。', dawGuide({
+    where: ['環境設定/Audio SettingsでBuffer SizeまたはBuffer Lengthを見る。', '録音中は重いプラグインをバイパスし、低遅延モードやダイレクトモニタリングを使う。', 'オーディオインターフェイス側のInput/Direct Monitorつまみも確認する。'],
+    shortcuts: ['Logic: Low Latency ModeをControl Barに表示して切替', 'Ableton: Options > Reduced Latency When Monitoring', 'FL Studio: Audio settings > Buffer length'],
+    firstCheck: ['録音時は64〜128 samples、編集/ミックス時は256〜1024 samplesを目安に切り替える。'],
+  })),
+  item('daw-006', 'daw', 'オートメーションが増えて管理できない', 'ボリューム、フィルター、FX操作が散らかって後から直しにくい悩み。', ['オートメーション', '管理', 'DAW'], 'オートメーションが増えすぎました。整理方法を知りたいです。', dawGuide({
+    where: ['Automation Lane/Envelopeを表示し、音量/フィルター/センドを1種類ずつ確認する。', '動きが必要なパラメータだけ残し、細かすぎる点は間引く。', '大きな変化はクリップ単位、小さな調整はトラック単位で分ける。'],
+    shortcuts: ['Ableton: AでAutomation Mode', 'Logic: AでAutomation表示', 'FL Studio: ノブ右クリック > Create automation clip'],
+    firstCheck: ['まずボリュームオートメーションとフィルター系だけを表示し、曲の展開に効いているか見る。'],
+  })),
+  item('daw-007', 'daw', 'プラグインを挿しすぎて原因が分からない', '改善目的が曖昧なまま処理が積み上がる悩み。', ['プラグイン', '原因特定', '処理'], 'プラグインを挿しすぎて何が効いているか分かりません。整理したいです。', dawGuide({
+    where: ['トラック、バス、マスターの順にプラグイン欄を見て、役割を書き出す。', '一旦全バイパスして、EQ/Comp/Saturation/Reverbの順に1つずつ戻す。', '戻しても良くなった理由が言えないものは外す候補にする。'],
+    shortcuts: ['各DAW共通: プラグインの電源/BypassボタンでA/B確認', 'Ableton: Device Activatorでオン/オフ', 'Logic: Channel Strip内のプラグイン電源でオン/オフ'],
+    firstCheck: ['音量差で良く聴こえないよう、オン/オフ時の音量を近づけて比較する。'],
+  })),
+  item('daw-008', 'daw', 'テンプレートを作っても結局使わない', '自分の制作手順に合わないテンプレで、開始時の負荷が下がらない悩み。', ['テンプレート', '時短', '制作手順'], 'DAWテンプレを作っても使いません。自分に合う形を考えたいです。', dawGuide({
+    where: ['よく使うAudio/MIDI/Drum/Vocal/Bus/Sendだけ残し、重い音源は入れすぎない。', 'Kick/Bass/Lead/Vocal/FXなど最初から名前と色を固定する。', 'FileメニューのTemplate保存機能で、起動時に選べる形にする。'],
+    shortcuts: ['Ableton: File > Save Live Set as Template', 'Logic: File > Save as Template', 'FL Studio: ProjectをTemplatesフォルダへ保存'],
+    firstCheck: ['1曲分を丸ごとテンプレ化せず、開始10分で必ず使う要素だけに絞る。'],
+  })),
+  item('daw-009', 'daw', 'MIDI打ち込みが人間っぽくならない', 'ベロシティ、タイミング、長さ、奏法の変化が足りない悩み。', ['MIDI', '打ち込み', 'ベロシティ'], '打ち込みが固く聴こえます。どこをズラす/変えるべきですか？', dawGuide({
+    where: ['Piano RollでVelocity、Note Length、Timingを順番に見る。', '全ノート同じ強さを避け、主拍/裏拍/装飾音で強弱を変える。', 'クオンタイズ後に一部だけ手で前後へ動かし、ゴーストノートや休符を入れる。'],
+    shortcuts: ['Ableton: Cmd+U / Ctrl+UでQuantize', 'Logic: Piano Roll下部でVelocity表示', 'FL Studio: Alt+RでRandomize'],
+    firstCheck: ['まずベロシティを3段階に分け、次に音の長さを少し変える。'],
+  })),
+  item('daw-010', 'daw', 'プロジェクトファイルが散らかって再開できない', '命名、色分け、バージョン管理、書き出し管理が弱い悩み。', ['整理', 'プロジェクト', '再開'], '昔のプロジェクトを開いても分かりません。整理ルールを作りたいです。', dawGuide({
+    where: ['トラック名を役割で揃え、色はDrums/Bass/Synth/Vocal/FXなどカテゴリ別に固定する。', 'Audio/Exports/Refs/Archiveのフォルダを作り、書き出し先を毎回同じにする。', '大きく変える前は日付付きで別名保存する。'],
+    shortcuts: ['Cmd+S / Ctrl+S: 保存', 'Cmd+Shift+S / Ctrl+Shift+S: 別名保存', '各DAW共通: Color/Track Nameをまとめて設定'],
+    firstCheck: ['再開時に迷う曲ほど、最新版、書き出し、参考曲、未使用素材を分けておく。'],
+  })),
 
   item('workflow-001', 'workflow', '曲を完成させる前に次の曲を作ってしまう', '新しいアイデアに移り続け、公開できる作品が残らない悩み。', ['完成しない', '習慣', '公開'], '曲を完成させられません。今の曲を最後まで進める判断を手伝ってほしいです。'),
   item('workflow-002', 'workflow', 'リファレンスを聴くほど落ち込む', '比較対象との差を改善点ではなく才能差として受け取ってしまう悩み。', ['リファレンス', '比較', 'メンタル'], '市販曲と比べると落ち込みます。改善点として分解してほしいです。'),
@@ -178,6 +258,7 @@ export function searchPainLibrary(items, { query = '', category = 'all', tag = '
       entry.title,
       entry.summary,
       entry.prompt,
+      entry.aiAnswer,
       ...entry.tags,
       getPainCategory(entry.category).label,
     ].join(' ').toLowerCase();

@@ -295,10 +295,47 @@ export function LibraryPage() {
                         </button>
                       ))}
                     </div>
+                    {entry.operationGuide && (
+                      <div className="library-entry__operation">
+                        <div>
+                          <span>まず見る場所</span>
+                          <ul>
+                            {entry.operationGuide.where.map((text) => (
+                              <li key={text}>{text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <span>ショートカット</span>
+                          <ul>
+                            {entry.operationGuide.shortcuts.map((text) => (
+                              <li key={text}>{text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        {entry.operationGuide.firstCheck?.length > 0 && (
+                          <div>
+                            <span>最初の確認</span>
+                            <ul>
+                              {entry.operationGuide.firstCheck.map((text) => (
+                                <li key={text}>{text}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <p>ショートカットやメニュー名は、OS/DAWバージョン/個別設定で変わることがあります。</p>
+                      </div>
+                    )}
                     <div className="library-entry__prompt">
                       <span>相談文の例</span>
                       <p>{entry.prompt}</p>
                     </div>
+                    {entry.aiAnswer && (
+                      <div className="library-entry__answer">
+                        <span>AIによる回答</span>
+                        <p>{entry.aiAnswer}</p>
+                      </div>
+                    )}
                     <div className="library-entry__actions">
                       <button type="button" onClick={() => handleCreateFromEntry(entry)}>
                         この悩みで相談する
