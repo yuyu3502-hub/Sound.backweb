@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sound-fix-ecfcf.web.app/sitemap.xml

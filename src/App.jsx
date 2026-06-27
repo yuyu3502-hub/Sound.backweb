@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { logPageView, trackPageViewCounter } from './firebase';
 import { useAuth } from './context/AuthContext';
 import { hasAdminAccess } from './utils/adminAccess';
+import { applyRouteMeta } from './utils/pageMeta';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
@@ -17,17 +18,20 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ de
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const RankingPage = lazy(() => import('./pages/RankingPage').then((m) => ({ default: m.RankingPage })));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
+const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 
 function AnalyticsRouteTracker() {
   const location = useLocation();
   const { firebaseUser, isLoading, userData } = useAuth();
 
   useEffect(() => {
+    applyRouteMeta(location.pathname);
     logPageView(location.pathname, location.search);
     if (!isLoading && firebaseUser?.uid && userData && !hasAdminAccess(firebaseUser, userData)) {
       trackPageViewCounter(location.pathname, location.search, firebaseUser.uid);
     }
-  }, [firebaseUser?.uid, isLoading, location.pathname, location.search, userData]);
+  }, [firebaseUser, firebaseUser?.uid, isLoading, location.pathname, location.search, userData]);
 
   return null;
 }
@@ -48,6 +52,8 @@ function App() {
             <Route path="/profile/edit" element={<ProfileEditPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/ranking" element={<RankingPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/library" element={<LibraryPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/users/:uid" element={<UserPage />} />

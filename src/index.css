@@ -11,8 +11,8 @@
   --bg-elevated: #101010;
   --bg-card: #181818;
   --bg-input: #242424;
-  --accent: #1ed760;
-  --accent-strong: #1fdf64;
+  --accent: #d93a00;
+  --accent-strong: #f05a22;
   --text-primary: #ffffff;
   --text-secondary: #c4c4c4;
   --border: #2f2f2f;
@@ -30,12 +30,14 @@ body {
   font-size: 15px;
   line-height: 1.5;
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 button {
@@ -89,8 +91,8 @@ ul {
 
 .fab::after {
   inset: -4px;
-  border: 1px solid rgba(145, 255, 189, 0.4);
-  box-shadow: 0 0 16px rgba(30, 215, 96, 0.32);
+  border: 1px solid rgba(255, 129, 82, 0.34);
+  box-shadow: 0 0 16px rgba(217, 58, 0, 0.25);
   opacity: 0;
   transition: opacity 0.18s ease, box-shadow 0.18s ease;
 }
@@ -99,24 +101,24 @@ ul {
 .fab:focus-visible {
   transform: scale(1.06);
   box-shadow:
-    0 0 0 1px rgba(108, 255, 164, 0.45),
-    0 14px 30px rgba(30, 215, 96, 0.34),
-    0 0 34px rgba(30, 215, 96, 0.32);
+    0 0 0 1px rgba(255, 129, 82, 0.42),
+    0 14px 30px rgba(217, 58, 0, 0.26),
+    0 0 34px rgba(217, 58, 0, 0.2);
 }
 
 .fab:active {
   transform: scale(1.08);
   box-shadow:
-    0 0 0 1px rgba(144, 255, 188, 0.72),
-    0 0 18px rgba(30, 215, 96, 0.5),
-    0 0 42px rgba(30, 215, 96, 0.45);
+    0 0 0 1px rgba(255, 129, 82, 0.62),
+    0 0 18px rgba(217, 58, 0, 0.36),
+    0 0 42px rgba(217, 58, 0, 0.3);
 }
 
 .fab:hover::after,
 .fab:focus-visible::after,
 .fab:active::after {
   opacity: 0.95;
-  box-shadow: 0 0 18px rgba(30, 215, 96, 0.36);
+  box-shadow: 0 0 18px rgba(217, 58, 0, 0.28);
 }
 
 .fab__label {

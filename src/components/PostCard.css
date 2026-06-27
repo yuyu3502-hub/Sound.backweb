@@ -71,7 +71,7 @@
 
 .post-card__avatar-fallback {
   border-radius: 50%;
-  background: #a5d65f;
+  background: #d93a00;
   color: #0f1417;
   display: flex;
   align-items: center;
@@ -102,7 +102,8 @@
 }
 
 .post-card__sample-badge,
-.post-card__solved-badge {
+.post-card__solved-badge,
+.post-card__waiting-badge {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -115,15 +116,21 @@
 }
 
 .post-card__sample-badge {
-  color: #ffe5a3;
-  border: 1px solid rgba(251, 191, 36, 0.45);
-  background: rgba(251, 191, 36, 0.13);
+  color: #d7dadc;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .post-card__solved-badge {
-  color: #adf0ff;
-  border: 1px solid rgba(78, 188, 214, 0.45);
-  background: rgba(78, 188, 214, 0.13);
+  color: #ffb199;
+  border: 1px solid rgba(217, 58, 0, 0.42);
+  background: rgba(217, 58, 0, 0.12);
+}
+
+.post-card__waiting-badge {
+  color: #ffd2c2;
+  border: 1px solid rgba(217, 58, 0, 0.5);
+  background: rgba(217, 58, 0, 0.13);
 }
 
 .post-card__title {
@@ -157,7 +164,22 @@
 }
 
 .post-card__reply-count {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #2a3339;
+  border-radius: 999px;
+  background: #151d22;
+  color: #9fb0ba;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 9px;
+}
+
+.post-card__reply-count--waiting {
+  border-color: rgba(217, 58, 0, 0.4);
+  background: rgba(217, 58, 0, 0.1);
+  color: #ffb199;
 }
 
 .post-card__thumb {
@@ -185,6 +207,36 @@
   min-height: 22px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.post-card__reply-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(217, 58, 0, 0.22);
+  border-radius: 8px;
+  background: rgba(217, 58, 0, 0.07);
+}
+
+.post-card__reply-hint span {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgba(217, 58, 0, 0.12);
+  color: #ffb199;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 5px 8px;
+}
+
+.post-card__reply-hint p {
+  margin: 1px 0 0;
+  color: #c5d0d8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .post-card__audio {
@@ -248,9 +300,9 @@
 }
 
 .post-card__focus-chip {
-  border: 1px solid rgba(255, 69, 0, 0.45);
-  background: rgba(255, 69, 0, 0.12);
-  color: #ffb49b;
+  border: 1px solid rgba(217, 58, 0, 0.45);
+  background: rgba(217, 58, 0, 0.12);
+  color: #ffb199;
 }
 
 .post-card__progress-bar {
@@ -280,7 +332,7 @@
   top: 8px;
   left: 0;
   height: 6px;
-  background: linear-gradient(90deg, #ff4500, #ff8f65);
+  background: linear-gradient(90deg, #d93a00, #ff8f65);
   border-radius: 3px;
   transition: width 0.1s linear;
   pointer-events: none;
@@ -315,6 +367,18 @@
 .post-card__action:hover {
   background: #29333a;
   color: #fff;
+}
+
+.post-card__action--reply {
+  border: 1px solid rgba(217, 58, 0, 0.32);
+  background: rgba(217, 58, 0, 0.1);
+  color: #ffb199;
+}
+
+.post-card__action--reply:hover {
+  border-color: rgba(217, 58, 0, 0.54);
+  background: rgba(217, 58, 0, 0.16);
+  color: #ffd2c2;
 }
 
 @media (max-width: 640px) {

@@ -5,7 +5,7 @@ import {
   collection, query, where, getDocs, writeBatch,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db, logAppEvent, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import './ProfileEditPage.css';
@@ -13,6 +13,24 @@ import './ProfileEditPage.css';
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const AVATAR_MAX_SIZE = 128;
 const AVATAR_QUALITY = 0.5;
+
+const BIO_PROMPTS = [
+  {
+    id: 'mix_feedback',
+    label: 'ミックス相談',
+    text: 'ミックスとアレンジを勉強中です。低音の整理、ボーカルの抜け、全体の聴きやすさを相談したいです。',
+  },
+  {
+    id: 'ai_song_fix',
+    label: 'AI作曲の手直し',
+    text: 'AI作曲で作った曲を、より自然な展開や音作りに直す練習をしています。客観的な意見をもらえると嬉しいです。',
+  },
+  {
+    id: 'give_feedback',
+    label: '返信もします',
+    text: '自分も聴ける範囲で、良い点や気になった秒数を返します。DTM仲間と一緒に上達したいです。',
+  },
+];
 
 function readImageFile(file) {
   return new Promise((resolve, reject) => {
@@ -130,6 +148,17 @@ export function ProfileEditPage() {
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
+  const handleBioPromptApply = (prompt) => {
+    setBio(prompt.text.slice(0, 200));
+    setError('');
+    setSuccessMsg('');
+    logAppEvent('profile_bio_prompt_apply', {
+      prompt_id: prompt.id,
+      had_existing_bio: Boolean(bio.trim()),
+      bio_length_before: bio.trim().length,
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!displayName.trim()) {
@@ -200,6 +229,14 @@ export function ProfileEditPage() {
       }
 
       setUserData((prev) => ({ ...prev, ...updated }));
+      logAppEvent('profile_update_success', {
+        has_bio: Boolean(updated.bio),
+        has_photo: Boolean(updated.photoUrl),
+        bio_length: updated.bio.length,
+        display_name_length: updated.displayName.length,
+        photo_changed: Boolean(imageFile || removePhoto),
+        post_sync_failed: postSyncFailed,
+      });
       if (postSyncFailed) {
         setSuccessMsg('プロフィールを更新しました（過去の投稿への反映は一部失敗しました）。');
       } else {
@@ -208,6 +245,12 @@ export function ProfileEditPage() {
 
       setTimeout(() => navigate('/mypage'), 800);
     } catch {
+      logAppEvent('profile_update_failed', {
+        has_bio: Boolean(bio.trim()),
+        has_photo: Boolean(imagePreview),
+        bio_length: bio.trim().length,
+        photo_changed: Boolean(imageFile || removePhoto),
+      });
       setError('プロフィールの更新に失敗しました。');
     } finally {
       setLoading(false);
@@ -283,6 +326,23 @@ export function ProfileEditPage() {
           <label className="profile-edit-label">
             自己紹介 <span className="profile-edit-optional">任意</span>
           </label>
+          <div className="profile-edit-bio-helper" aria-label="自己紹介の書き出し候補">
+            <p className="profile-edit-helper-text">
+              共有された時に、何を相談したい人か伝わると反応されやすくなります。
+            </p>
+            <div className="profile-edit-prompt-list">
+              {BIO_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt.id}
+                  type="button"
+                  className="profile-edit-prompt-btn"
+                  onClick={() => handleBioPromptApply(prompt)}
+                >
+                  {prompt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="profile-edit-input-wrap">
             <textarea
               className="profile-edit-textarea"

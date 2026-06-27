@@ -21,6 +21,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/posts/$(postId));
     }
 
+    function commentDoc(commentId) {
+      return get(/databases/$(database)/documents/comments/$(commentId));
+    }
+
     function hasBlockedTerm(value) {
       return value.matches('.*(死ね|殺す|レイプ|暴行|児童ポルノ|自殺しろ|porn|Porn|PORN|nude|Nude|NUDE|sex|Sex|SEX|gore|Gore|GORE|violent|Violent|VIOLENT).*');
     }
@@ -57,6 +61,122 @@ service cloud.firestore {
       return value == null || (value is int && value >= 0);
     }
 
+    function isOptionalStringMax(value, max) {
+      return value == null || (value is string && value.size() <= max);
+    }
+
+    function isValidCommentSchema() {
+      return request.resource.data.keys().hasOnly([
+        'postId',
+        'authorUid',
+        'authorUserId',
+        'authorDisplayName',
+        'authorPhotoUrl',
+        'body',
+        'imageUrl',
+        'replyToCommentId',
+        'replyToAuthorUid',
+        'replyToAuthorName',
+        'isBestAnswer',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function isValidCommentCreateData() {
+      return isValidCommentSchema()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.authorDisplayName is string
+        && isOptionalStringMax(request.resource.data.authorUserId, 80)
+        && isOptionalStringMax(request.resource.data.authorPhotoUrl, 500)
+        && isOptionalStringMax(request.resource.data.replyToCommentId, 120)
+        && isOptionalStringMax(request.resource.data.replyToAuthorUid, 120)
+        && isOptionalStringMax(request.resource.data.replyToAuthorName, 60)
+        && isCleanCommentBody()
+        && request.resource.data.isBestAnswer == false
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isCommentAuthorContentUpdate() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'body',
+          'imageUrl',
+          'updatedAt'
+        ])
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.isBestAnswer == resource.data.isBestAnswer
+        && isCleanCommentBody()
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidNotificationSchema() {
+      return request.resource.data.keys().hasOnly([
+        'userUid',
+        'actorUid',
+        'actorDisplayName',
+        'actorPhotoUrl',
+        'type',
+        'postId',
+        'commentId',
+        'parentCommentId',
+        'bodySnippet',
+        'isRead',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function isBestAnswerNotificationCreate() {
+      return request.resource.data.type == 'best_answer'
+        && request.resource.data.commentId is string
+        && commentDoc(request.resource.data.commentId).data.postId == request.resource.data.postId
+        && postDoc(request.resource.data.postId).data.authorUid == request.auth.uid
+        && commentDoc(request.resource.data.commentId).data.authorUid == request.resource.data.userUid;
+    }
+
+    function isFeedbackNotificationCreate() {
+      return request.resource.data.type == 'feedback'
+        && request.resource.data.commentId is string
+        && commentDoc(request.resource.data.commentId).data.postId == request.resource.data.postId
+        && commentDoc(request.resource.data.commentId).data.authorUid == request.auth.uid
+        && postDoc(request.resource.data.postId).data.authorUid == request.resource.data.userUid;
+    }
+
+    function isReplyNotificationCreate() {
+      return request.resource.data.type == 'reply'
+        && request.resource.data.commentId is string
+        && request.resource.data.parentCommentId is string
+        && commentDoc(request.resource.data.commentId).data.postId == request.resource.data.postId
+        && commentDoc(request.resource.data.parentCommentId).data.postId == request.resource.data.postId
+        && commentDoc(request.resource.data.commentId).data.authorUid == request.auth.uid
+        && commentDoc(request.resource.data.parentCommentId).data.authorUid == request.resource.data.userUid;
+    }
+
+    function isValidNotificationCreateData() {
+      return isValidNotificationSchema()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.userUid is string
+        && request.resource.data.userUid != request.auth.uid
+        && request.resource.data.postId is string
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+        && isOptionalStringMax(request.resource.data.commentId, 120)
+        && isOptionalStringMax(request.resource.data.parentCommentId, 120)
+        && request.resource.data.actorDisplayName is string
+        && isOptionalStringMax(request.resource.data.actorPhotoUrl, 500)
+        && isOptionalStringMax(request.resource.data.bodySnippet, 80)
+        && request.resource.data.isRead == false
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (
+          isBestAnswerNotificationCreate()
+          || isFeedbackNotificationCreate()
+          || isReplyNotificationCreate()
+        );
+    }
+
     function isValidPostSchema() {
       return request.resource.data.keys().hasOnly([
         'authorUid',
@@ -71,6 +191,7 @@ service cloud.firestore {
         'audioUrl',
         'audioDurationSec',
         'focusSecondSec',
+        'allowExternalFeature',
         'updatedAt',
         'isSolved',
         'bestAnswerCommentId',
@@ -95,6 +216,7 @@ service cloud.firestore {
         && isOptionalString(request.resource.data.audioUrl)
         && isOptionalNonNegativeInt(request.resource.data.audioDurationSec)
         && isOptionalNonNegativeInt(request.resource.data.focusSecondSec)
+        && request.resource.data.allowExternalFeature is bool
         && request.resource.data.isSolved == false
         && request.resource.data.bestAnswerCommentId == null
         && request.resource.data.deleted == false
@@ -116,6 +238,7 @@ service cloud.firestore {
           'audioUrl',
           'audioDurationSec',
           'focusSecondSec',
+          'allowExternalFeature',
           'updatedAt'
         ])
         && isCleanPostTitle()
@@ -126,6 +249,7 @@ service cloud.firestore {
         && isOptionalString(request.resource.data.audioUrl)
         && isOptionalNonNegativeInt(request.resource.data.audioDurationSec)
         && isOptionalNonNegativeInt(request.resource.data.focusSecondSec)
+        && request.resource.data.allowExternalFeature is bool
         && request.resource.data.updatedAt is timestamp;
     }
 
@@ -153,7 +277,22 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if true;
       allow create: if isSelf(uid)
-        && request.resource.data.uid == uid;
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'userId',
+          'displayName',
+          'bio',
+          'photoUrl',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == uid
+        && request.resource.data.userId is string
+        && request.resource.data.displayName is string
+        && isOptionalString(request.resource.data.bio)
+        && isOptionalString(request.resource.data.photoUrl)
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
       allow update: if isSelf(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
@@ -193,16 +332,14 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if isSignedIn()
-        && request.resource.data.authorUid == request.auth.uid
         && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
-        && isCleanCommentBody();
+        && isValidCommentCreateData();
 
       allow update: if isSignedIn() && (
         // コメント作成者の通常更新
         (resource.data.authorUid == request.auth.uid
-          && request.resource.data.authorUid == resource.data.authorUid
-          && request.resource.data.postId == resource.data.postId
-          && isCleanCommentBody())
+          && isValidCommentSchema()
+          && isCommentAuthorContentUpdate())
         ||
         // 投稿者がベストアンサー指定
         (
@@ -227,10 +364,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.userUid == request.auth.uid;
 
       allow create: if isSignedIn()
-        && request.resource.data.actorUid == request.auth.uid
-        && request.resource.data.userUid is string
-        && request.resource.data.type in ['best_answer', 'feedback', 'reply']
-        && request.resource.data.isRead == false;
+        && isValidNotificationCreateData();
 
       allow update: if isSignedIn()
         && resource.data.userUid == request.auth.uid
@@ -252,14 +386,14 @@ service cloud.firestore {
     // analytics_page_views_daily: 閲覧数の日別集計。
     match /analytics_page_views_daily/{dateKey} {
       allow read: if true;
-      allow create, update: if isSignedIn();
+      allow create, update: if false;
       allow delete: if false;
     }
 
     // analytics_summary: 閲覧数の累計集計。
     match /analytics_summary/{docId} {
       allow read: if true;
-      allow create, update: if isSignedIn() && docId == 'pageViews';
+      allow create, update: if false;
       allow delete: if false;
     }
 

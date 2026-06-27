@@ -1,0 +1,20 @@
+{
+  "name": "Sound.back",
+  "short_name": "Sound.back",
+  "description": "音楽制作の悩みを音源つきで相談できるコミュニティ。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0f11",
+  "theme_color": "#0b0f11",
+  "lang": "ja",
+  "categories": ["music", "productivity", "social"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

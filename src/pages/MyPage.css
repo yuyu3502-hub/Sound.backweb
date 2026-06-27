@@ -105,13 +105,38 @@
   align-items: center;
   gap: 4px;
   margin-top: 4px;
-  background: rgba(255, 196, 0, 0.15);
-  border: 1px solid rgba(255, 196, 0, 0.4);
+  background: rgba(217, 58, 0, 0.12);
+  border: 1px solid rgba(217, 58, 0, 0.42);
   border-radius: 20px;
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #ffc400;
+  color: #ffb199;
+}
+
+.mypage-profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mypage-profile__action-btn {
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 12px;
+}
+
+.mypage-profile__action-btn--x {
+  border-color: rgba(217, 58, 0, 0.52);
+  background: rgba(217, 58, 0, 0.12);
+  color: var(--accent);
 }
 
 .mypage-profile__edit-btn {
@@ -125,10 +150,10 @@
 }
 
 .mypage-profile__admin-btn {
-  background: rgba(96, 165, 250, 0.08);
-  border: 1px solid rgba(96, 165, 250, 0.42);
+  background: rgba(217, 58, 0, 0.08);
+  border: 1px solid rgba(217, 58, 0, 0.36);
   border-radius: 20px;
-  color: #bfdbfe;
+  color: #ffb199;
   font-size: 13px;
   padding: 4px 14px;
   flex-shrink: 0;
@@ -152,6 +177,67 @@
   margin-top: -10px;
   color: var(--danger);
   font-size: 13px;
+}
+
+.mypage-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(217, 58, 0, 0.28);
+  border-radius: var(--radius);
+  background: rgba(217, 58, 0, 0.06);
+}
+
+.mypage-next__copy {
+  min-width: 0;
+}
+
+.mypage-next__eyebrow {
+  margin: 0 0 5px;
+  color: #ffb199;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mypage-next h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.mypage-next p {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mypage-next__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mypage-next__actions button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.mypage-next__actions .mypage-next__primary {
+  border-color: rgba(217, 58, 0, 0.58);
+  background: #d93a00;
+  color: #fff;
 }
 
 /* 投稿セクション */
@@ -214,7 +300,7 @@
 
 .mypage-post-card__badge {
   font-size: 11px;
-  background: rgba(168, 85, 247, 0.15);
+  background: rgba(217, 58, 0, 0.12);
   border: 1px solid var(--accent);
   color: var(--accent);
   border-radius: 20px;
@@ -289,10 +375,10 @@
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 1px solid rgba(30, 215, 96, 0.5);
-  background: rgba(30, 215, 96, 0.1);
+  border: 1px solid rgba(217, 58, 0, 0.5);
+  background: rgba(217, 58, 0, 0.1);
   font-size: 14px;
-  color: #9ef2c1;
+  color: #ffb199;
   opacity: 0.9;
   padding: 0;
   display: flex;
@@ -307,7 +393,7 @@
   border-color: rgba(110, 255, 166, 0.9);
   box-shadow:
     0 0 0 1px rgba(110, 255, 166, 0.35),
-    0 0 14px rgba(30, 215, 96, 0.32);
+    0 0 14px rgba(217, 58, 0, 0.32);
   transform: translateY(-1px);
 }
 
@@ -365,15 +451,38 @@
     border-radius: 8px;
   }
 
+  .mypage-next {
+    background: #11161a;
+    border-color: #30363d;
+    border-radius: 8px;
+  }
+
+  .mypage-next__actions button {
+    background: #181c1f;
+    border-color: #343a40;
+  }
+
+  .mypage-next__actions .mypage-next__primary {
+    border-color: #d93a00;
+    background: #d93a00;
+  }
+
   .mypage-profile__avatar-fallback {
     background: #d93a00;
   }
 
   .mypage-profile__edit-btn,
+  .mypage-profile__action-btn,
   .mypage-profile__admin-btn,
   .mypage-profile__logout-btn {
     border-radius: var(--radius-pill);
     background: #181c1f;
+  }
+
+  .mypage-profile__action-btn--x {
+    border-color: rgba(217, 58, 0, 0.5);
+    background: rgba(217, 58, 0, 0.14);
+    color: #ff8a5c;
   }
 
   .mypage-section__title {
@@ -418,5 +527,21 @@
   .mypage-post-card__tag {
     background: #1a2025;
     border-color: #343a40;
+  }
+}
+
+@media (max-width: 640px) {
+  .mypage-profile,
+  .mypage-next {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mypage-next__actions {
+    justify-content: flex-start;
+  }
+
+  .mypage-profile__actions {
+    justify-content: flex-start;
   }
 }

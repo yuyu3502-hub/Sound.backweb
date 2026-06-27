@@ -12,7 +12,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, logAppEvent } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { getNotificationMessage } from '../utils/notifications';
@@ -74,11 +74,23 @@ export function NotificationsPage() {
         });
         await batch.commit();
       }
+
+      logAppEvent('notifications_view', {
+        total_count: docs.length,
+        unread_count: unreadDocs.length,
+      });
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEmptyBrowseClick = () => {
+    logAppEvent('notifications_empty_cta_click', {
+      destination: 'home',
+    });
+    navigate('/');
   };
 
   const handleClickNotification = async (notification) => {
@@ -94,10 +106,21 @@ export function NotificationsPage() {
     }
 
     if (notification.postId) {
-      navigate(`/post/${notification.postId}`);
+      logAppEvent('notification_open', {
+        notification_type: notification.type ?? 'unknown',
+        has_comment_id: Boolean(notification.commentId),
+        is_read: Boolean(notification.isRead),
+      });
+      const commentHash = notification.commentId ? `#comment-${notification.commentId}` : '';
+      navigate(`/post/${notification.postId}${commentHash}`);
       return;
     }
 
+    logAppEvent('notification_open', {
+      notification_type: notification.type ?? 'unknown',
+      has_comment_id: Boolean(notification.commentId),
+      is_read: Boolean(notification.isRead),
+    });
     navigate('/');
   };
 
@@ -105,7 +128,7 @@ export function NotificationsPage() {
     <div className="notifications-page">
       <header className="notifications-header">
         <div className="notifications-header__inner">
-          <h1 className="notifications-title">Notifications</h1>
+          <h1 className="notifications-title">通知</h1>
           <button className="notifications-back-btn" onClick={() => navigate(-1)}>
             ← 戻る
           </button>
@@ -122,7 +145,13 @@ export function NotificationsPage() {
         {loading ? (
           <p className="notifications-state">読み込み中...</p>
         ) : notifications.length === 0 ? (
-          <p className="notifications-state">ほかの通知はまだありません。</p>
+          <section className="notifications-empty">
+            <h2>通知はまだありません</h2>
+            <p>気になる相談にコメントすると、返信やベストアンサーの通知がここに届きます。</p>
+            <button type="button" onClick={handleEmptyBrowseClick}>
+              投稿を見に行く
+            </button>
+          </section>
         ) : (
           <ul className="notifications-list">
             {notifications.map((notification) => (

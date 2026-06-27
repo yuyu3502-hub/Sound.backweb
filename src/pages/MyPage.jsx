@@ -5,10 +5,12 @@ import {
   collection, query, where, getDocs, limit, getCountFromServer,
   doc, writeBatch,
 } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth, db, logAppEvent } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { hasAdminAccess } from '../utils/adminAccess';
+import { openUserOnX, shareOrCopyUser } from '../utils/sharePost';
+import { buildAuthPath } from '../utils/authLinks';
 import './MyPage.css';
 
 const MY_POSTS_LIMIT = 60;
@@ -34,6 +36,7 @@ export function MyPage() {
   const [bestAnswerCount, setBestAnswerCount] = useState(0);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [logoutError, setLogoutError] = useState('');
+  const [profileShareState, setProfileShareState] = useState('idle');
 
   useEffect(() => {
     if (isLoading) return;
@@ -44,6 +47,12 @@ export function MyPage() {
     fetchMyPosts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser, isLoading]);
+
+  useEffect(() => {
+    if (profileShareState === 'idle') return undefined;
+    const timeoutId = window.setTimeout(() => setProfileShareState('idle'), 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [profileShareState]);
 
   const fetchMyPosts = async () => {
     setLoading(true);
@@ -110,9 +119,62 @@ export function MyPage() {
     }
   };
 
+  const handleNextActionClick = (action, destination) => {
+    logAppEvent('mypage_next_action_click', {
+      action,
+      destination,
+      post_count: posts.length,
+      unsolved_count: unsolved.length,
+      solved_count: solved.length,
+      has_bio: Boolean(userData?.bio?.trim()),
+      has_photo: Boolean(userData?.photoUrl),
+    });
+    navigate(destination);
+  };
+
+  const currentUserProfile = firebaseUser ? { uid: firebaseUser.uid, ...userData } : null;
+
+  const logProfileShare = (channel, result) => {
+    logAppEvent('profile_share_click', {
+      profile_uid: firebaseUser?.uid ?? 'unknown',
+      channel,
+      surface: 'mypage_profile',
+      result,
+      signed_in: Boolean(firebaseUser),
+      post_count: posts.length,
+      unsolved_count: unsolved.length,
+      best_answer_count: bestAnswerCount,
+    });
+  };
+
+  const handleProfileShare = async () => {
+    const result = await shareOrCopyUser(currentUserProfile);
+    logProfileShare('native_or_copy', result);
+    if (result === 'copied') setProfileShareState('copied');
+    if (result === 'failed') setProfileShareState('failed');
+  };
+
+  const handleProfileShareOnX = () => {
+    const opened = openUserOnX(currentUserProfile);
+    logProfileShare('x', opened ? 'opened' : 'failed');
+  };
+
+  const handleOpenPublicProfile = () => {
+    logAppEvent('mypage_public_profile_open', {
+      post_count: posts.length,
+      unsolved_count: unsolved.length,
+      best_answer_count: bestAnswerCount,
+      has_bio: Boolean(userData?.bio?.trim()),
+      has_photo: Boolean(userData?.photoUrl),
+    });
+    navigate(`/users/${firebaseUser.uid}`);
+  };
+
   const unsolved = posts.filter((p) => !p.isSolved);
   const solved = posts.filter((p) => p.isSolved);
   const canAccessAdmin = hasAdminAccess(firebaseUser, userData);
+  const needsProfileSetup = !userData?.bio?.trim() || !userData?.photoUrl;
+  const latestUnsolvedPost = unsolved[0] ?? null;
 
   const initial = userData?.displayName?.[0]?.toUpperCase() ?? '?';
 
@@ -153,6 +215,29 @@ export function MyPage() {
               </span>
             )}
           </div>
+          <div className="mypage-profile__actions" aria-label="プロフィール操作">
+            <button
+              type="button"
+              className="mypage-profile__action-btn"
+              onClick={handleOpenPublicProfile}
+            >
+              表示
+            </button>
+            <button
+              type="button"
+              className="mypage-profile__action-btn"
+              onClick={handleProfileShare}
+            >
+              {profileShareState === 'copied' ? 'URLコピー済み' : profileShareState === 'failed' ? '共有失敗' : '共有'}
+            </button>
+            <button
+              type="button"
+              className="mypage-profile__action-btn mypage-profile__action-btn--x"
+              onClick={handleProfileShareOnX}
+            >
+              Xで紹介
+            </button>
+          </div>
           <button
             className="mypage-profile__edit-btn"
             onClick={() => navigate('/profile/edit')}
@@ -177,6 +262,69 @@ export function MyPage() {
         </section>
 
         {logoutError && <p className="mypage-error">{logoutError}</p>}
+
+        {!loading && (
+          <section className="mypage-next">
+            <div className="mypage-next__copy">
+              <p className="mypage-next__eyebrow">次にやること</p>
+              <h2>
+                {posts.length === 0
+                  ? 'まずは1曲、悩みを音で相談してみる'
+                  : latestUnsolvedPost
+                    ? '未解決の相談に返信を集める'
+                    : '次の相談や返信で参加を続ける'}
+              </h2>
+              <p>
+                {posts.length === 0
+                  ? 'タイトル、音源、気になる秒数を入れると、聴いた人が返しやすくなります。'
+                  : latestUnsolvedPost
+                    ? '投稿詳細からX文をコピーしたり、相談募集の下書きを開けます。'
+                    : '近い悩みに短く返すだけでも、Sound.back内で見つけてもらいやすくなります。'}
+              </p>
+            </div>
+            <div className="mypage-next__actions">
+              {posts.length === 0 ? (
+                <button
+                  type="button"
+                  className="mypage-next__primary"
+                  onClick={() => handleNextActionClick('create_first_post', '/create')}
+                >
+                  初回相談を投稿
+                </button>
+              ) : latestUnsolvedPost ? (
+                <button
+                  type="button"
+                  className="mypage-next__primary"
+                  onClick={() => handleNextActionClick('open_latest_unsolved', `/post/${latestUnsolvedPost.id}`)}
+                >
+                  未解決の投稿を開く
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="mypage-next__primary"
+                  onClick={() => handleNextActionClick('browse_unanswered', '/')}
+                >
+                  返信募集中を見る
+                </button>
+              )}
+              {needsProfileSetup && (
+                <button
+                  type="button"
+                  onClick={() => handleNextActionClick('edit_profile', '/profile/edit')}
+                >
+                  プロフィールを整える
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleNextActionClick('browse_posts', '/')}
+              >
+                投稿を見る
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* 投稿一覧 */}
         {loading ? (
@@ -226,7 +374,7 @@ export function MyPage() {
 
       <BottomNav active="" />
 
-      <button className="fab" onClick={() => navigate(firebaseUser ? '/create' : '/auth?mode=register')} aria-label="投稿する">
+      <button className="fab" onClick={() => navigate(firebaseUser ? '/create' : buildAuthPath({ returnTo: '/create' }))} aria-label="投稿する">
         <span className="fab__label">{firebaseUser ? '悩みを投稿' : '登録して投稿'}</span>
       </button>
     </div>

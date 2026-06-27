@@ -11,31 +11,19 @@
   justify-content: center;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 40;
+  overflow: hidden;
 }
 
 .bottom-nav__inner {
   display: flex;
-  width: 100%;
-  max-width: 480px;
-}
-
-.bottom-nav__inner .bottom-nav__btn {
-  flex: 1;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 12px;
-  min-height: 56px;
-  transition: color 0.15s, transform 0.15s;
+  width: min(100%, 360px);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .bottom-nav__btn {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -44,9 +32,17 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 11px;
   min-height: 56px;
+  padding: 0 4px;
   transition: color 0.15s, transform 0.15s;
+}
+
+.bottom-nav__btn span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottom-nav__icon-wrap {
@@ -81,35 +77,7 @@
 }
 
 .bottom-nav__btn--ranking-active {
-  position: relative;
-  color: #9ec4ff;
-  text-shadow: 0 0 10px rgba(110, 166, 255, 0.55), 0 0 18px rgba(172, 116, 255, 0.34);
-}
-
-.bottom-nav__btn--ranking-active .bottom-nav__icon-wrap::before {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border-radius: 999px;
-  border: 1px solid rgba(130, 176, 255, 0.44);
-  box-shadow: 0 0 12px rgba(110, 166, 255, 0.34), inset 0 0 8px rgba(176, 119, 255, 0.22);
-}
-
-.bottom-nav__btn--ranking-active .bottom-nav__icon-wrap::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -9px;
-  width: 30px;
-  height: 9px;
-  border-radius: 99px;
-  background: radial-gradient(circle, rgba(112, 172, 255, 0.5), rgba(112, 172, 255, 0));
-  filter: blur(2px);
-}
-
-.bottom-nav__btn--ranking-active svg {
-  filter: drop-shadow(0 0 6px rgba(92, 160, 255, 0.54)) drop-shadow(0 0 10px rgba(161, 111, 255, 0.28));
+  color: var(--accent);
 }
 
 @media (min-width: 981px) {

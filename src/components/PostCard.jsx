@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { logAppEvent } from '../firebase';
+import { openPostOnX, shareOrCopyPost } from '../utils/sharePost';
 import './PostCard.css';
 
 function formatRelativeTime(timestamp) {
@@ -28,11 +30,13 @@ export function PostCard({
   authorPhotoUrlOverride = null,
   isSpecialAvatar = false,
   replyCount = 0,
+  onReplyIntent = null,
 }) {
   const audioRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [lastSeekReturnTime, setLastSeekReturnTime] = useState(null);
   const [hasLoadedAudio, setHasLoadedAudio] = useState(false);
+  const [shareState, setShareState] = useState('idle');
   const hasAllGenres = Boolean(post.worryGenre && post.musicGenre && post.daw);
   const isSolved = Boolean(post.isSolved || post.bestAnswerCommentId);
   const isOfficialSample = Boolean(post.isOfficialSample);
@@ -45,6 +49,7 @@ export function PostCard({
   const score = makeStableScore(post.id, safeReplyCount);
   const communityName = post.worryGenre ? `r/${post.worryGenre}` : 'r/Soundback';
   const relativeTime = formatRelativeTime(post.createdAt);
+  const isWaitingForFirstReply = !isSolved && safeReplyCount === 0;
 
   const formatSeconds = (value) => {
     const sec = Math.max(0, Math.floor(value));
@@ -62,6 +67,12 @@ export function PostCard({
       audio.pause();
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    if (shareState === 'idle') return undefined;
+    const timeoutId = window.setTimeout(() => setShareState('idle'), 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [shareState]);
 
   const handleTimeUpdate = () => {
     const audio = audioRef.current;
@@ -116,6 +127,37 @@ export function PostCard({
     }
   };
 
+  const handleShare = async (e) => {
+    e.stopPropagation();
+    const result = await shareOrCopyPost(post);
+    logAppEvent('post_share_click', {
+      post_id: post.id,
+      channel: 'native_or_copy',
+      surface: 'feed_card',
+      result,
+    });
+    if (result === 'copied') setShareState('copied');
+    if (result === 'failed') setShareState('failed');
+  };
+
+  const handleShareOnX = (e) => {
+    e.stopPropagation();
+    const opened = openPostOnX(post);
+    logAppEvent('post_share_click', {
+      post_id: post.id,
+      channel: 'x',
+      surface: 'feed_card',
+      result: opened ? 'opened' : 'failed',
+    });
+  };
+
+  const handleReplyIntent = (e) => {
+    e.stopPropagation();
+    if (onReplyIntent) {
+      onReplyIntent(post);
+    }
+  };
+
   const initial = displayName[0]?.toUpperCase() ?? '?';
 
   return (
@@ -144,6 +186,9 @@ export function PostCard({
         {showSolvedBadge && isSolved && (
           <span className="post-card__solved-badge">解決済み</span>
         )}
+        {showSolvedBadge && isWaitingForFirstReply && (
+          <span className="post-card__waiting-badge">返信募集中</span>
+        )}
       </div>
 
       {post.title && <h3 className="post-card__title">{post.title}</h3>}
@@ -151,7 +196,9 @@ export function PostCard({
       <p className="post-card__body">{post.body}</p>
 
       <div className="post-card__meta-row">
-        <span className="post-card__reply-count">返信 {safeReplyCount}件</span>
+        <span className={`post-card__reply-count ${isWaitingForFirstReply ? 'post-card__reply-count--waiting' : ''}`}>
+          {isWaitingForFirstReply ? '最初の返信を待っています' : `返信 ${safeReplyCount}件`}
+        </span>
         {post.imageUrl && (
           <img
             className="post-card__thumb"
@@ -169,6 +216,17 @@ export function PostCard({
           <span className="post-card__tag">{post.worryGenre}</span>
           <span className="post-card__tag">{post.musicGenre}</span>
           <span className="post-card__tag">{post.daw}</span>
+        </div>
+      )}
+
+      {isWaitingForFirstReply && (
+        <div className="post-card__reply-hint" aria-label="返信のヒント">
+          <span>返し方</span>
+          <p>
+            {hasFocusSecond
+              ? `${formatSeconds(focusSecondSec)}付近の良い点・気になった所だけでもOK`
+              : '良い点・気になった所・確認したいことだけでもOK'}
+          </p>
         </div>
       )}
 
@@ -224,16 +282,25 @@ export function PostCard({
           <strong>{score}</strong>
           <span aria-hidden="true">↓</span>
         </button>
-        <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="返信数">
+        <button
+          type="button"
+          className={`post-card__action ${onReplyIntent ? 'post-card__action--reply' : ''}`}
+          onClick={handleReplyIntent}
+          aria-label="返信する"
+        >
           <span aria-hidden="true">○</span>
-          <strong>{safeReplyCount}</strong>
+          <strong>{isWaitingForFirstReply ? '返信する' : `返信 ${safeReplyCount}`}</strong>
         </button>
         <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="保存">
           <span aria-hidden="true">◇</span>
         </button>
-        <button type="button" className="post-card__action" onClick={(e) => e.stopPropagation()} aria-label="共有">
+        <button type="button" className="post-card__action" onClick={handleShare} aria-label="共有">
           <span aria-hidden="true">↗</span>
-          <strong>共有</strong>
+          <strong>{shareState === 'copied' ? 'コピー済み' : shareState === 'failed' ? '失敗' : '共有'}</strong>
+        </button>
+        <button type="button" className="post-card__action" onClick={handleShareOnX} aria-label="Xで共有">
+          <span aria-hidden="true">𝕏</span>
+          <strong>相談募集</strong>
         </button>
       </div>
     </div>

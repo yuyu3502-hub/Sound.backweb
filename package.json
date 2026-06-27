@@ -7,6 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "check:public": "node scripts/check_public_assets.mjs",
+    "check:dtm-x-draft": "node scripts/check_dtm_x_draft.mjs",
+    "check:predeploy": "npm run check:public && npm run lint && npm run build && npx firebase deploy --only firestore:rules --dry-run",
+    "check:live": "node scripts/check_live_public.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

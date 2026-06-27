@@ -1,21 +1,111 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   doc, getDoc, collection, query, where, orderBy,
   getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, limit, writeBatch, documentId,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db, logAppEvent, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { createNotification, NOTIFICATION_TYPES } from '../utils/notifications';
 import { isSpecialSkinUserId } from '../utils/specialAvatar';
 import { getCachedAvatarMetaByUids, mergeAvatarMetaCache } from '../utils/avatarMetaCache';
+import { buildPostSharePayload, openPostOnX, shareOrCopyPost } from '../utils/sharePost';
+import { buildAuthPath } from '../utils/authLinks';
 import './PostDetailPage.css';
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const COMMENTS_FETCH_LIMIT = 120;
 const TIMESTAMP_PATTERN = /(\d{1,2}:\d{2})/g;
+const X_MAX_CHARS = 280;
+const COMMENT_TEMPLATES = [
+  {
+    id: 'good-and-fix',
+    label: '良い点＋直す点',
+    body: '良いと思った点:\n\n気になった点:\n\n',
+  },
+  {
+    id: 'time-note',
+    label: '秒数つき',
+    body: '0:00 あたりで気になったこと:\n\n',
+  },
+  {
+    id: 'question',
+    label: '質問する',
+    body: '確認したいこと:\n\n',
+  },
+];
+
+const COMMENT_STARTERS = [
+  {
+    templateId: 'good-and-fix',
+    label: '良い点を返す',
+    description: 'まず良かったところを1つ書く',
+  },
+  {
+    templateId: 'time-note',
+    label: '秒数で伝える',
+    description: '気になった位置から具体的に返す',
+  },
+  {
+    templateId: 'question',
+    label: '質問する',
+    description: '制作意図を聞いて会話を始める',
+  },
+];
+
+function buildCommentAssistSuggestions(post, hasFocusSecond, focusSecondSec) {
+  if (!post) return [];
+
+  const suggestions = [
+    {
+      id: 'short-positive',
+      label: '良い点から返す',
+      body: '良いと思った点:\n\n気になった点:\n\n',
+    },
+  ];
+
+  if (hasFocusSecond) {
+    suggestions.push({
+      id: 'focus-second',
+      label: `${formatSeconds(focusSecondSec)}で返す`,
+      body: `${formatSeconds(focusSecondSec)} あたりで気になったこと:\n\n良いと思った点:\n\n`,
+    });
+  }
+
+  if (post.worryGenre === 'ミックス' || /ミックス|音圧|低音|ボーカル|埋もれ|EQ|コンプ/i.test(`${post.title ?? ''} ${post.body ?? ''}`)) {
+    suggestions.push({
+      id: 'mix-check',
+      label: 'ミックス目線',
+      body: 'ミックスで気になった点:\n\n良く聞こえた点:\n\n試すと良さそうなこと:\n\n',
+    });
+  }
+
+  if (post.worryGenre === 'アレンジ' || /アレンジ|展開|単調|構成|2番|サビ/i.test(`${post.title ?? ''} ${post.body ?? ''}`)) {
+    suggestions.push({
+      id: 'arrange-check',
+      label: '展開を見る',
+      body: '展開で良いと思った点:\n\n変化を足すなら:\n\n気になった箇所:\n\n',
+    });
+  }
+
+  if (post.worryGenre === 'AI作曲' || /AI|Suno|Udio|生成|自然/i.test(`${post.title ?? ''} ${post.body ?? ''}`)) {
+    suggestions.push({
+      id: 'ai-fix-check',
+      label: 'AI曲の手直し',
+      body: '自然に聞こえた点:\n\n機械っぽく感じた点:\n\n直すなら:\n\n',
+    });
+  }
+
+  suggestions.push({
+    id: 'ask-intent',
+    label: '意図を聞く',
+    body: '確認したいこと:\n\n目指している雰囲気はどんな感じですか？\n',
+  });
+
+  return suggestions.slice(0, 4);
+}
 
 function formatDate(timestamp) {
   if (!timestamp) return '';
@@ -118,12 +208,16 @@ export function PostDetailPage() {
   const { postId } = useParams();
   const { firebaseUser, userData } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [authorMetaByUid, setAuthorMetaByUid] = useState({});
   const [postLoading, setPostLoading] = useState(true);
   const [postError, setPostError] = useState(false);
+  const [shareState, setShareState] = useState('idle');
+  const [xCopyState, setXCopyState] = useState('idle');
+  const [showCreatedBanner, setShowCreatedBanner] = useState(Boolean(location.state?.justCreated));
 
   // 音源プレイヤー
   const audioRef = useRef(null);
@@ -139,8 +233,11 @@ export function PostDetailPage() {
   const [commentError, setCommentError] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [commentSuccess, setCommentSuccess] = useState(null);
   const imageInputRef = useRef(null);
   const commentTextareaRef = useRef(null);
+  const restoredCommentIntentRef = useRef(false);
+  const highlightedCommentIdRef = useRef('');
 
   const fetchPost = async () => {
     try {
@@ -178,6 +275,70 @@ export function PostDetailPage() {
     fetchComments();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  useEffect(() => {
+    if (shareState === 'idle') return undefined;
+    const timeoutId = window.setTimeout(() => setShareState('idle'), 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [shareState]);
+
+  useEffect(() => {
+    if (xCopyState === 'idle') return undefined;
+    const timeoutId = window.setTimeout(() => setXCopyState('idle'), 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [xCopyState]);
+
+  useEffect(() => {
+    if (!comments.length || !location.hash.startsWith('#comment-')) return;
+
+    const targetCommentId = location.hash.replace('#comment-', '');
+    if (!targetCommentId || highlightedCommentIdRef.current === targetCommentId) return;
+
+    const targetElement = document.getElementById(`comment-${targetCommentId}`);
+    if (!targetElement) return;
+
+    highlightedCommentIdRef.current = targetCommentId;
+    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    targetElement.classList.add('detail-comment--target');
+    targetElement.setAttribute('tabindex', '-1');
+    targetElement.focus({ preventScroll: true });
+    logAppEvent('notification_comment_focus', {
+      post_id: postId,
+      comment_id: targetCommentId,
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      targetElement.classList.remove('detail-comment--target');
+    }, 2600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [comments, location.hash, postId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (
+      !firebaseUser
+      || restoredCommentIntentRef.current
+      || params.get('comment') !== '1'
+    ) {
+      return;
+    }
+
+    restoredCommentIntentRef.current = true;
+    setShowCommentForm(true);
+    setCommentError('');
+    logAppEvent('comment_intent_restored', {
+      post_id: postId,
+    });
+
+    params.delete('comment');
+    const nextSearch = params.toString();
+    navigate(`/post/${postId}${nextSearch ? `?${nextSearch}` : ''}`, { replace: true });
+
+    window.requestAnimationFrame(() => {
+      commentTextareaRef.current?.focus();
+    });
+  }, [firebaseUser, location.search, navigate, postId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -369,7 +530,13 @@ export function PostDetailPage() {
 
   const handleReplyClick = (comment) => {
     if (!firebaseUser) {
-      navigate('/auth');
+      const returnTo = `/post/${postId}?comment=1`;
+      navigate(buildAuthPath({ returnTo }), {
+        state: {
+          message: '返信するには無料登録が必要です。',
+          returnTo,
+        },
+      });
       return;
     }
 
@@ -378,6 +545,7 @@ export function PostDetailPage() {
       authorUid: comment.authorUid,
       authorDisplayName: comment.authorDisplayName ?? 'ユーザー',
     });
+    setCommentSuccess(null);
     setShowCommentForm(true);
     setCommentError('');
 
@@ -390,11 +558,89 @@ export function PostDetailPage() {
     setReplyTarget(null);
   };
 
+  const buildCommentTemplateBody = (template) => {
+    const currentSecond = audioRef.current?.currentTime ?? 0;
+    return template.id === 'time-note'
+      ? `${formatSeconds(currentSecond)} あたりで気になったこと:\n\n`
+      : template.body;
+  };
+
+  const insertCommentTemplate = (template) => {
+    const templateBody = buildCommentTemplateBody(template);
+    const nextBody = commentBody.trim()
+      ? `${commentBody.trimEnd()}\n\n${templateBody}`
+      : templateBody;
+
+    setCommentBody(nextBody.slice(0, 400));
+    setCommentError('');
+  };
+
+  const handleApplyCommentTemplate = (template) => {
+    insertCommentTemplate(template);
+    logAppEvent('comment_template_apply', {
+      post_id: postId,
+      template_id: template.id,
+      surface: 'form',
+    });
+
+    window.requestAnimationFrame(() => {
+      commentTextareaRef.current?.focus();
+    });
+  };
+
+  const handleCommentStarterClick = (starter) => {
+    const template = COMMENT_TEMPLATES.find((item) => item.id === starter.templateId);
+    if (!template) return;
+
+    setReplyTarget(null);
+    setShowCommentForm(true);
+    setCommentSuccess(null);
+    insertCommentTemplate(template);
+    logAppEvent('comment_starter_click', {
+      post_id: postId,
+      starter_id: starter.templateId,
+      surface: 'pre_comment',
+    });
+    logAppEvent('comment_template_apply', {
+      post_id: postId,
+      template_id: template.id,
+      surface: 'starter',
+    });
+
+    window.requestAnimationFrame(() => {
+      commentTextareaRef.current?.focus();
+    });
+  };
+
+  const handleCommentAssistApply = (suggestion) => {
+    setReplyTarget(null);
+    setShowCommentForm(true);
+    setCommentSuccess(null);
+    insertCommentTemplate({ id: suggestion.id, body: suggestion.body });
+    logAppEvent('comment_assist_apply', {
+      post_id: postId,
+      suggestion_id: suggestion.id,
+      worry_genre: post?.worryGenre ?? 'none',
+      has_audio: Boolean(post?.audioUrl),
+      has_focus_second: Number.isFinite(Number(post?.focusSecondSec)),
+    });
+
+    window.requestAnimationFrame(() => {
+      commentTextareaRef.current?.focus();
+    });
+  };
+
   // コメント投稿
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!firebaseUser) {
-      navigate('/auth');
+      const returnTo = `/post/${postId}?comment=1`;
+      navigate(buildAuthPath({ returnTo }), {
+        state: {
+          message: 'コメントするには無料登録が必要です。',
+          returnTo,
+        },
+      });
       return;
     }
     const trimmedBody = commentBody.trim();
@@ -461,10 +707,32 @@ export function PostDetailPage() {
         });
       }
 
+      logAppEvent('comment_submit_success', {
+        post_id: postId,
+        comment_id: commentRef.id,
+        is_reply: Boolean(replyTarget?.id),
+        has_image: Boolean(imageUrl),
+        body_length: trimmedBody.length,
+        signed_in: true,
+        post_author: Boolean(postAuthorUid && postAuthorUid === firebaseUser.uid),
+        post_comment_count_before: comments.length,
+      });
+
+      setCommentSuccess({
+        commentId: commentRef.id,
+        isReply: Boolean(replyTarget?.id),
+      });
       resetCommentForm();
       setShowCommentForm(false);
       await fetchComments();
-    } catch {
+    } catch (err) {
+      logAppEvent('comment_submit_failed', {
+        post_id: postId,
+        is_reply: Boolean(replyTarget?.id),
+        has_image: Boolean(commentImage),
+        body_length: trimmedBody.length,
+        reason: err?.code || err?.name || 'unknown',
+      });
       setCommentError('コメントの投稿に失敗しました。もう一度お試しください。');
     } finally {
       setCommentLoading(false);
@@ -500,9 +768,20 @@ export function PostDetailPage() {
       });
 
       setPost((prev) => ({ ...prev, isSolved: true, bestAnswerCommentId: commentId }));
+      logAppEvent('best_answer_select_success', {
+        post_id: postId,
+        comment_id: commentId,
+        selected_author_uid: selectedComment.authorUid,
+        comment_count: comments.length,
+      });
       await fetchComments();
     } catch (err) {
       console.error(err);
+      logAppEvent('best_answer_select_failed', {
+        post_id: postId,
+        comment_id: commentId,
+        reason: err?.code || err?.name || 'unknown',
+      });
     }
   };
 
@@ -537,17 +816,169 @@ export function PostDetailPage() {
     }
   };
 
+  const handleSharePost = async () => {
+    const result = await shareOrCopyPost(post);
+    logAppEvent('post_share_click', {
+      post_id: post.id,
+      channel: 'native_or_copy',
+      surface: 'post_detail',
+      result,
+    });
+    if (result === 'copied') setShareState('copied');
+    if (result === 'failed') setShareState('failed');
+  };
+
+  const handleSharePostOnX = () => {
+    const opened = openPostOnX(post);
+    logAppEvent('post_share_click', {
+      post_id: post.id,
+      channel: 'x',
+      surface: 'post_detail',
+      result: opened ? 'opened' : 'failed',
+    });
+  };
+
+  const handleCopyPostXText = async (surface) => {
+    if (!post?.id) return;
+    const payload = buildPostSharePayload(post, '', 'x');
+    const charCount = [...payload.xText].length;
+
+    if (charCount > X_MAX_CHARS) {
+      setXCopyState('over');
+      logAppEvent('post_x_text_copy', {
+        post_id: post.id,
+        surface,
+        result: 'over_limit',
+        char_count: charCount,
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(payload.xText);
+      setXCopyState('copied');
+      logAppEvent('post_x_text_copy', {
+        post_id: post.id,
+        surface,
+        result: 'copied',
+        char_count: charCount,
+      });
+    } catch (err) {
+      console.error(err);
+      setXCopyState('failed');
+      logAppEvent('post_x_text_copy', {
+        post_id: post.id,
+        surface,
+        result: 'failed',
+        char_count: charCount,
+      });
+    }
+  };
+
+  const handleCreatedShareOnX = () => {
+    const opened = openPostOnX(post);
+    logAppEvent('post_created_share_cta_click', {
+      post_id: post.id,
+      channel: 'x',
+      result: opened ? 'opened' : 'failed',
+    });
+  };
+
+  const handleGuestCommentCta = (surface) => {
+    logAppEvent('comment_signup_cta_click', {
+      post_id: post.id,
+      surface,
+    });
+    const returnTo = `/post/${post.id}?comment=1`;
+    navigate(buildAuthPath({ returnTo }), {
+      state: {
+        message: 'コメントするには無料登録が必要です。',
+        returnTo,
+      },
+    });
+  };
+
+  const handleGuestCreateCta = (surface) => {
+    logAppEvent('create_post_cta_click', {
+      surface,
+      signed_in: false,
+      source_post_id: post.id,
+    });
+    navigate(buildAuthPath({ returnTo: '/create' }), {
+      state: {
+        message: '投稿するには無料登録が必要です。',
+        returnTo: '/create',
+      },
+    });
+  };
+
+  const handleAuthorProfileOpen = (surface) => {
+    if (!post?.authorUid) return;
+
+    logAppEvent('post_author_profile_open', {
+      post_id: post.id,
+      author_uid: post.authorUid,
+      surface,
+      signed_in: Boolean(firebaseUser),
+      is_post_author: Boolean(isPostAuthor),
+      comment_count: comments.length,
+    });
+    navigate(`/users/${post.authorUid}`);
+  };
+
+  const openCommentFormFromCta = (surface) => {
+    if (!firebaseUser) {
+      handleGuestCommentCta(surface);
+      return;
+    }
+
+    setReplyTarget(null);
+    setShowCommentForm(true);
+    setCommentSuccess(null);
+    setCommentError('');
+    logAppEvent('comment_start_cta_click', {
+      post_id: post.id,
+      surface,
+    });
+
+    window.requestAnimationFrame(() => {
+      commentTextareaRef.current?.focus();
+    });
+  };
+
   const handleDeleteCommentTap = (e, commentId) => {
     e.stopPropagation();
     handleDeleteComment(commentId);
   };
 
+  const handleCommentSuccessAction = (action) => {
+    logAppEvent('comment_success_next_action_click', {
+      post_id: post.id,
+      action,
+      comment_id: commentSuccess?.commentId ?? 'unknown',
+      is_reply: Boolean(commentSuccess?.isReply),
+      comment_count: comments.length,
+    });
+
+    if (action === 'browse_unanswered') {
+      navigate('/?sort=unanswered&source=comment_success');
+      return;
+    }
+
+    if (action === 'ranking') {
+      navigate('/ranking');
+      return;
+    }
+
+    if (action === 'dismiss') {
+      setCommentSuccess(null);
+    }
+  };
+
   // FABクリック: 未ログインなら認証画面へ、ログイン済みはフォーム開閉
   const handleFabClick = () => {
     if (!firebaseUser) {
-      navigate('/auth?mode=register', {
-        state: { message: 'コメントするには無料登録が必要です。' },
-      });
+      handleGuestCommentCta('floating_button');
       return;
     }
     setShowCommentForm((prev) => {
@@ -571,7 +1002,11 @@ export function PostDetailPage() {
   const postDurationSec = Number(post.audioDurationSec ?? 0);
   const focusSecondSec = Number(post.focusSecondSec ?? -1);
   const hasFocusSecond = Number.isFinite(focusSecondSec) && focusSecondSec >= 0;
+  const commentAssistSuggestions = buildCommentAssistSuggestions(post, hasFocusSecond, focusSecondSec);
   const postIsEdited = isEdited(post.createdAt, post.updatedAt);
+  const postXText = buildPostSharePayload(post, '', 'x').xText;
+  const postXTextCharCount = [...postXText].length;
+  const isPostXTextOverLimit = postXTextCharCount > X_MAX_CHARS;
 
   return (
     <div className="detail-page">
@@ -584,6 +1019,34 @@ export function PostDetailPage() {
 
       <main className="detail-main">
         <div className="detail-content">
+          {showCreatedBanner && isPostAuthor && (
+            <section className="detail-created-banner">
+              <div>
+                <h2>投稿できました</h2>
+                <p>このままXで相談を募集すると、聴いてくれる人を集めやすくなります。</p>
+              </div>
+              <div className="detail-created-banner__actions">
+                <button type="button" onClick={handleCreatedShareOnX}>
+                  𝕏で相談を募集
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopyPostXText('created_banner')}
+                  disabled={isPostXTextOverLimit}
+                >
+                  {xCopyState === 'copied' ? 'コピー済み' : 'X文コピー'}
+                </button>
+                <button
+                  type="button"
+                  className="detail-created-banner__dismiss"
+                  onClick={() => setShowCreatedBanner(false)}
+                >
+                  閉じる
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* 投稿情報 */}
           <section className="detail-post">
           {isPostAuthor && (
@@ -609,7 +1072,7 @@ export function PostDetailPage() {
 
           <button
             className="detail-author"
-            onClick={() => navigate(`/users/${post.authorUid}`)}
+            onClick={() => handleAuthorProfileOpen('post_header_author')}
           >
             <span className={`detail-author__avatar-shell ${isPostAuthorSpecial ? 'detail-author__avatar-shell--special' : ''}`}>
               {postAuthorPhotoUrl ? (
@@ -633,13 +1096,51 @@ export function PostDetailPage() {
             {post.daw && <span className="detail-tag">{post.daw}</span>}
             {post.isOfficialSample && <span className="detail-tag detail-tag--sample">運営サンプル</span>}
             {post.isSolved && <span className="detail-tag detail-tag--solved">解決済み</span>}
+            {isPostAuthor && post.allowExternalFeature && (
+              <span className="detail-tag detail-tag--feature-ok">公式紹介OK</span>
+            )}
             <span className="detail-date">{formatDate(post.createdAt)}</span>
             {postIsEdited && <span className="detail-edited-date">編集: {formatDate(post.updatedAt)}</span>}
+          </div>
+
+          <div className="detail-author-card">
+            <div>
+              <p className="detail-author-card__eyebrow">投稿者</p>
+              <h3>{post.authorDisplayName || 'ユーザー'}</h3>
+              <p>この人の他の相談や解決済み投稿も見られます。</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleAuthorProfileOpen('post_author_card')}
+            >
+              プロフィールを見る
+            </button>
           </div>
 
           {post.title && <h2 className="detail-post-title">{post.title}</h2>}
 
           <p className="detail-body">{renderTextWithTimestampLinks(post.body, 'post-body')}</p>
+
+          <div className="detail-post-actions" aria-label="投稿アクション">
+            <button type="button" className="detail-share-btn" onClick={handleSharePost}>
+              ↗ {shareState === 'copied' ? 'URLをコピーしました' : shareState === 'failed' ? 'コピーできませんでした' : '投稿を共有'}
+            </button>
+            <button type="button" className="detail-share-btn detail-share-btn--x" onClick={handleSharePostOnX}>
+              𝕏で相談を募集
+            </button>
+            <button
+              type="button"
+              className="detail-share-btn"
+              onClick={() => handleCopyPostXText('post_detail')}
+              disabled={isPostXTextOverLimit}
+            >
+              {xCopyState === 'copied' ? 'X文コピー済み' : xCopyState === 'failed' ? 'コピーできませんでした' : 'X文コピー'}
+            </button>
+          </div>
+          <p className={`detail-x-text-count ${isPostXTextOverLimit ? 'is-over-limit' : ''}`}>
+            X文 {postXTextCharCount}/{X_MAX_CHARS}字
+            {isPostXTextOverLimit && ' - 280字を超えています'}
+          </p>
 
           {post.imageUrl && (
             <img className="detail-image" src={post.imageUrl} alt="" loading="lazy" decoding="async" />
@@ -686,6 +1187,45 @@ export function PostDetailPage() {
               />
             </div>
           )}
+
+          {!isPostAuthor && (
+            <div className="detail-inline-comment-cta">
+              <div>
+                <h3>{firebaseUser ? '聴いた感想をそのまま返す' : '聴いたら、一言返してみませんか？'}</h3>
+                <p>良い点や気になった秒数を短く書くだけでも、投稿者の助けになります。</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openCommentFormFromCta('post_body_inline')}
+              >
+                {firebaseUser ? 'コメントを書く' : '登録してコメント'}
+              </button>
+            </div>
+          )}
+
+          {!firebaseUser && (
+            <div className="detail-guest-next-step">
+              <div>
+                <h3>自分の曲でも相談できます</h3>
+                <p>音源、気になる秒数、聴いてほしい所を添えると、初めてでも返してもらいやすくなります。</p>
+              </div>
+              <div className="detail-guest-next-step__actions">
+                <button
+                  type="button"
+                  onClick={() => handleGuestCommentCta('post_next_step_comment')}
+                >
+                  この投稿にコメント
+                </button>
+                <button
+                  type="button"
+                  className="detail-guest-next-step__secondary"
+                  onClick={() => handleGuestCreateCta('post_detail_next_step')}
+                >
+                  自分も相談する
+                </button>
+              </div>
+            </div>
+          )}
           </section>
 
           {/* コメントフォーム（インライン） */}
@@ -703,6 +1243,33 @@ export function PostDetailPage() {
                     >
                       解除
                     </button>
+                  </div>
+                )}
+                <div className="detail-comment-form__templates" aria-label="コメントテンプレート">
+                  {COMMENT_TEMPLATES.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => handleApplyCommentTemplate(template)}
+                    >
+                      {template.label}
+                    </button>
+                  ))}
+                </div>
+                {commentAssistSuggestions.length > 0 && (
+                  <div className="detail-comment-form__assist" aria-label="この投稿への返信下書き">
+                    <p>この投稿への返し方</p>
+                    <div className="detail-comment-form__assist-actions">
+                      {commentAssistSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          onClick={() => handleCommentAssistApply(suggestion)}
+                        >
+                          {suggestion.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <textarea
@@ -772,11 +1339,66 @@ export function PostDetailPage() {
             </section>
           )}
 
+          {commentSuccess && !showCommentForm && (
+            <section className="detail-comment-success">
+              <div>
+                <p className="detail-comment-success__eyebrow">コメントできました</p>
+                <h2>他の返信募集中の相談にも、短く返せます。</h2>
+                <p>今のひとことが投稿者の判断材料になります。続けて近い悩みを探すと、Sound.back内で人の気配が増えていきます。</p>
+              </div>
+              <div className="detail-comment-success__actions">
+                <button type="button" onClick={() => handleCommentSuccessAction('browse_unanswered')}>
+                  返信募集中を見る
+                </button>
+                <button type="button" onClick={() => handleCommentSuccessAction('ranking')}>
+                  ランキングを見る
+                </button>
+                <button type="button" onClick={() => handleCommentSuccessAction('dismiss')}>
+                  閉じる
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* コメント一覧 */}
           <section className="detail-comments">
           <h2 className="detail-comments__title">
             コメント{comments.length > 0 && `（${comments.length}）`}
           </h2>
+          {firebaseUser && !isPostAuthor && !showCommentForm && (
+            <div className="detail-comment-starter">
+              <div className="detail-comment-starter__copy">
+                <h3>聴いたら、そのまま一言返せます</h3>
+                <p>長文じゃなくても大丈夫です。良い点、気になった秒数、確認したいことから選べます。</p>
+              </div>
+              <div className="detail-comment-starter__actions">
+                {COMMENT_STARTERS.map((starter) => (
+                  <button
+                    key={starter.templateId}
+                    type="button"
+                    onClick={() => handleCommentStarterClick(starter)}
+                  >
+                    <span>{starter.label}</span>
+                    <small>{starter.description}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {!firebaseUser && (
+            <div className="detail-guest-comment-cta">
+              <div>
+                <h3>聴いた感想を返してみませんか？</h3>
+                <p>良い点を1つ、気になった秒数を1つ書くだけでも投稿者の助けになります。</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleGuestCommentCta('comments_section')}
+              >
+                登録してコメント
+              </button>
+            </div>
+          )}
           {comments.length === 0 && (
             <p className="detail-comments__empty">まだコメントはありません。</p>
           )}
@@ -792,6 +1414,7 @@ export function PostDetailPage() {
               return (
                 <li
                   key={comment.id}
+                  id={`comment-${comment.id}`}
                   className={`detail-comment ${comment.isBestAnswer ? 'detail-comment--best' : ''} ${comment.threadDepth > 0 ? 'detail-comment--reply' : ''}`}
                   style={{ '--reply-depth': Math.min(comment.threadDepth ?? 0, 4) }}
                 >

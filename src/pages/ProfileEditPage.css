@@ -115,6 +115,40 @@
   opacity: 0.7;
 }
 
+.profile-edit-bio-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(217, 58, 0, 0.08);
+  border: 1px solid rgba(217, 58, 0, 0.2);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.profile-edit-helper-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.profile-edit-prompt-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-edit-prompt-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 8px 12px;
+}
+
 /* インプット */
 .profile-edit-input-wrap {
   position: relative;
@@ -180,7 +214,7 @@
 
 .profile-edit-success {
   font-size: 13px;
-  color: #4ade80;
+  color: #ffb199;
   margin-top: 4px;
 }
 
@@ -251,11 +285,22 @@
   }
 
   .profile-edit-file-btn,
+  .profile-edit-prompt-btn,
   .profile-edit-input,
   .profile-edit-textarea {
     background: #0b0f12;
     border-color: #30363d;
     border-radius: 6px;
+  }
+
+  .profile-edit-bio-helper {
+    background: rgba(217, 58, 0, 0.08);
+    border-color: rgba(217, 58, 0, 0.24);
+    border-radius: 6px;
+  }
+
+  .profile-edit-prompt-btn {
+    border-radius: var(--radius-pill);
   }
 
   .profile-edit-input:focus,

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, documentId, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, logAppEvent } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { isSpecialSkinUserId } from '../utils/specialAvatar';
+import { buildAuthPath } from '../utils/authLinks';
 import './RankingPage.css';
 
 const RANKING_FETCH_LIMIT = 100;
@@ -18,6 +20,7 @@ function chunkArray(values, size) {
 
 export function RankingPage() {
   const navigate = useNavigate();
+  const { firebaseUser } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,6 +87,13 @@ export function RankingPage() {
           .map((row, index) => ({ ...row, rank: index + 1 }));
 
         if (!cancelled) setRows(nextRows);
+        if (!cancelled) {
+          logAppEvent('ranking_view', {
+            row_count: nextRows.length,
+            signed_in: Boolean(firebaseUser),
+            top_score: nextRows[0]?.bestAnswerCount ?? 0,
+          });
+        }
       } catch (err) {
         console.error(err);
         if (!cancelled) setRows([]);
@@ -97,43 +107,83 @@ export function RankingPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [firebaseUser]);
+
+  const totalBestAnswers = rows.reduce((sum, row) => sum + row.bestAnswerCount, 0);
+  const topHelper = rows[0] ?? null;
+
+  const handleRankingCta = (action) => {
+    logAppEvent('ranking_cta_click', {
+      action,
+      signed_in: Boolean(firebaseUser),
+      row_count: rows.length,
+      top_score: topHelper?.bestAnswerCount ?? 0,
+    });
+
+    if (action === 'browse_unanswered') {
+      navigate('/?sort=unanswered&source=ranking');
+      return;
+    }
+
+    if (action === 'create_post') {
+      navigate(firebaseUser ? '/create' : buildAuthPath({ returnTo: '/create' }), {
+        state: firebaseUser
+          ? undefined
+          : { message: '投稿するには無料登録が必要です。', returnTo: '/create' },
+      });
+    }
+  };
 
   return (
     <div className="ranking-page">
-      <div className="ranking-bg" aria-hidden="true">
-        <div className="ranking-bg__base" />
-        <div className="ranking-bg__stage-lights">
-          <div className="ranking-bg__spot ranking-bg__spot--left" />
-          <div className="ranking-bg__spot ranking-bg__spot--center" />
-          <div className="ranking-bg__spot ranking-bg__spot--right" />
-        </div>
-        <div className="ranking-bg__center-glow" />
-        <div className="ranking-bg__laser ranking-bg__laser--a" />
-        <div className="ranking-bg__laser ranking-bg__laser--b" />
-        <div className="ranking-bg__fog" />
-        <div className="ranking-bg__particles ranking-bg__particles--near" />
-        <div className="ranking-bg__uplights">
-          <div className="ranking-bg__uplight ranking-bg__uplight--1" />
-          <div className="ranking-bg__uplight ranking-bg__uplight--2" />
-          <div className="ranking-bg__uplight ranking-bg__uplight--3" />
-          <div className="ranking-bg__uplight ranking-bg__uplight--4" />
-          <div className="ranking-bg__uplight ranking-bg__uplight--5" />
-        </div>
-        <div className="ranking-bg__bokeh ranking-bg__bokeh--near" />
-      </div>
-
       <header className="ranking-header">
         <div className="ranking-header__inner">
-          <h1 className="ranking-title">Ranking</h1>
+          <h1 className="ranking-title">返してくれる人</h1>
+          <p className="ranking-subtitle">ベストアンサーから、相談に具体的に返している人を見られます。</p>
         </div>
       </header>
 
       <main className="ranking-main">
+        <section className="ranking-summary" aria-label="ランキング概要">
+          <div>
+            <p className="ranking-summary__label">ベストアンサー合計</p>
+            <strong>{totalBestAnswers.toLocaleString('ja-JP')}回</strong>
+          </div>
+          <div>
+            <p className="ranking-summary__label">掲載ユーザー</p>
+            <strong>{rows.length.toLocaleString('ja-JP')}人</strong>
+          </div>
+          <div>
+            <p className="ranking-summary__label">トップ</p>
+            <strong>{topHelper ? `${topHelper.bestAnswerCount}回` : '-'}</strong>
+          </div>
+        </section>
+
+        <section className="ranking-join" aria-label="ランキング参加導線">
+          <div>
+            <p className="ranking-join__eyebrow">参加するなら</p>
+            <h2>返信募集中の相談に、短く返すところから。</h2>
+            <p>良い点、気になった秒数、確認したいこと。ひとことでも投稿者の判断材料になります。</p>
+          </div>
+          <div className="ranking-join__actions">
+            <button type="button" onClick={() => handleRankingCta('browse_unanswered')}>
+              返信募集中を見る
+            </button>
+            <button type="button" onClick={() => handleRankingCta('create_post')}>
+              自分も相談する
+            </button>
+          </div>
+        </section>
+
         {loading ? (
           <p className="ranking-state">集計中...</p>
         ) : rows.length === 0 ? (
-          <p className="ranking-state">まだランキングデータがありません。</p>
+          <div className="ranking-state ranking-state--empty">
+            <p>まだランキングデータがありません。</p>
+            <button type="button" onClick={() => handleRankingCta('browse_unanswered')}>
+              最初の返信を探す
+            </button>
+          </div>
         ) : (
           <ul className="ranking-list">
             {rows.map((row) => (
@@ -151,7 +201,7 @@ export function RankingPage() {
                   )}
                 </span>
                 <div className="ranking-user">
-                  {row.rank === 1 && <p className="ranking-champion-title">👑 MIX KING</p>}
+                  {row.rank === 1 && <p className="ranking-champion-title">よく選ばれています</p>}
                   <p className="ranking-name">{row.displayName}</p>
                   <p className="ranking-id">@{row.userId}</p>
                 </div>

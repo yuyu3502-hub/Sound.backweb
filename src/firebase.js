@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics, isSupported, logEvent } from 'firebase/analytics';
-import { doc, getFirestore, increment, serverTimestamp, setDoc } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { captureAcquisition, getAcquisitionEventParams } from './utils/acquisition';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -39,6 +40,7 @@ export const logPageView = (pathname, search = '') => {
   }
 
   const pagePath = `${pathname}${search}`;
+  const acquisitionParams = captureAcquisition(pathname, search);
 
   void analyticsPromise.then((analytics) => {
     if (!analytics) {
@@ -49,59 +51,31 @@ export const logPageView = (pathname, search = '') => {
       page_title: document.title,
       page_location: window.location.href,
       page_path: pagePath,
+      ...acquisitionParams,
     });
   });
 };
 
-function getDateKey(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-export const trackPageViewCounter = (pathname, search = '', uid = '') => {
-  if (typeof window === 'undefined' || !uid) {
+export const logAppEvent = (eventName, params = {}) => {
+  if (typeof window === 'undefined' || !eventName) {
     return;
   }
 
-  const pagePath = `${pathname}${search}`;
-  const cacheKey = `pv:${uid}:${pagePath}`;
-  const nowMs = Date.now();
-  const lastTrackedAt = Number(sessionStorage.getItem(cacheKey) || 0);
+  void analyticsPromise.then((analytics) => {
+    if (!analytics) {
+      return;
+    }
 
-  // React StrictModeの二重実行による重複カウントを抑制。
-  if (nowMs - lastTrackedAt < 5000) {
-    return;
-  }
-
-  sessionStorage.setItem(cacheKey, String(nowMs));
-
-  const now = new Date();
-  const dayKey = getDateKey(now);
-  const totalRef = doc(db, 'analytics_summary', 'pageViews');
-  const dailyRef = doc(db, 'analytics_page_views_daily', dayKey);
-
-  void Promise.all([
-    setDoc(
-      totalRef,
-      {
-        totalCount: increment(1),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    ),
-    setDoc(
-      dailyRef,
-      {
-        count: increment(1),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    ),
-  ]).catch((error) => {
-    console.error('Failed to track page view counter', error);
+    logEvent(analytics, eventName, {
+      ...getAcquisitionEventParams(),
+      ...params,
+    });
   });
+};
+
+export const trackPageViewCounter = () => {
+  // Security: pageview counters are no longer writable from client-side Firestore.
+  // Keep this function as a no-op to avoid breaking callers until server-side tracking is introduced.
 };
 
 export default app;

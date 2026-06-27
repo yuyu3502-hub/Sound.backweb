@@ -11,7 +11,7 @@ const RANKING_COLLECTION = 'rankingBestAnswers';
 const DAILY_SAMPLE_LIMIT = 10;
 const X_DRAFT_LIMIT = 20;
 const DAILY_SAMPLE_SEED_ENABLED = process.env.ENABLE_DAILY_SAMPLE_SEED === 'true';
-const X_SOURCE_TYPES = new Set(['AI', 'DAW', 'Trend', 'Singer']);
+const X_SOURCE_TYPES = new Set(['AI', 'DAW', 'Trend', 'Singer', 'Thought']);
 const X_DRAFT_STATUS = new Set(['queued', 'needs_review', 'approved', 'rejected', 'posted']);
 
 const WORRY_GENRES = new Set([
@@ -106,6 +106,15 @@ function normalizeXStatus(value) {
   return X_DRAFT_STATUS.has(normalized) ? normalized : 'queued';
 }
 
+function normalizeRecommendationScore(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function normalizeQualityFlags(value) {
   if (!Array.isArray(value)) return [];
   return value
@@ -122,6 +131,9 @@ function buildXDraftPayload(rawDraft, createdBy) {
   const postText = normalizeText(rawDraft?.postText, 500);
   const sourceUrl = normalizeOptionalText(rawDraft?.sourceUrl, 400);
   const headline = normalizeOptionalText(rawDraft?.headline, 160);
+  const postKind =
+    normalizeOptionalText(rawDraft?.postKind, 40) ?? (sourceType === 'Thought' ? 'thought' : 'news');
+  const recommendationScore = normalizeRecommendationScore(rawDraft?.recommendationScore);
   const status = normalizeXStatus(rawDraft?.status);
   const qualityFlags = normalizeQualityFlags(rawDraft?.qualityFlags);
 
@@ -137,6 +149,8 @@ function buildXDraftPayload(rawDraft, createdBy) {
     postText,
     sourceUrl,
     headline,
+    postKind,
+    recommendationScore,
     status,
     qualityFlags,
     createdBy,
@@ -180,6 +194,7 @@ function buildPostPayload(authorUid, profile, rawDraft) {
     audioUrl: null,
     audioDurationSec: null,
     focusSecondSec: null,
+    allowExternalFeature: false,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     isSolved: false,
     bestAnswerCommentId: null,
@@ -356,12 +371,15 @@ exports.backfillBestAnswerRanking = onRequest(
     }
 
     const configuredKey = process.env.BACKFILL_KEY ?? '';
-    if (configuredKey) {
-      const requestKey = req.get('x-backfill-key') ?? '';
-      if (requestKey !== configuredKey) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
+    if (!configuredKey) {
+      res.status(500).json({ error: 'BACKFILL_KEY is not configured' });
+      return;
+    }
+
+    const requestKey = req.get('x-backfill-key') ?? '';
+    if (requestKey !== configuredKey) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
     try {
@@ -579,9 +597,14 @@ exports.seedXDrafts = onRequest(
         return;
       }
 
-      const payloads = drafts
-        .map((draft) => buildXDraftPayload(draft, createdBy))
-        .filter(Boolean);
+      const preparedDrafts = drafts
+        .map((draft) => ({
+          draft,
+          payload: buildXDraftPayload(draft, createdBy),
+        }))
+        .filter((item) => Boolean(item.payload));
+
+      const payloads = preparedDrafts.map((item) => item.payload);
 
       if (!isNonEmptyArray(payloads)) {
         res.status(400).json({ error: 'No valid drafts in payload' });
@@ -594,18 +617,112 @@ exports.seedXDrafts = onRequest(
         createdIds.push(ref.id);
       }
 
+      const usedNewsSourceIds = [];
+      for (const item of preparedDrafts) {
+        const postKind =
+          typeof item.payload?.postKind === 'string' ? item.payload.postKind.trim().toLowerCase() : '';
+
+        if (postKind !== 'news' || !item.payload.sourceUrl) {
+          continue;
+        }
+
+        const usedSourcePayload = {
+          sourceUrl: item.payload.sourceUrl,
+          headline: item.payload.headline,
+          sourceType: item.payload.sourceType,
+          postText: item.payload.postText,
+          recommendationScore: normalizeRecommendationScore(item.draft?.recommendationScore),
+          usedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: 'n8n',
+        };
+
+        const usedSourceRef = await db.collection('xUsedNewsSources').add(usedSourcePayload);
+        usedNewsSourceIds.push(usedSourceRef.id);
+      }
+
       logger.info('seedXDrafts success', {
         drafts: payloads.length,
+        usedNewsSources: usedNewsSourceIds.length,
       });
 
       res.status(200).json({
         ok: true,
         draftsCreated: payloads.length,
         draftIds: createdIds,
+        usedNewsSourcesCreated: usedNewsSourceIds.length,
+        usedNewsSourceIds,
       });
     } catch (err) {
       logger.error('seedXDrafts failed', err);
       res.status(500).json({ error: 'seedXDrafts failed' });
+    }
+  }
+);
+
+exports.getUsedXNewsSources = onRequest(
+  {
+    region: REGION,
+    timeoutSeconds: 120,
+    memory: '512MiB',
+  },
+  async (req, res) => {
+    if (req.method !== 'GET') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const configuredKey = process.env.N8N_AUTOMATION_KEY ?? '';
+    if (!configuredKey) {
+      res.status(500).json({ error: 'N8N_AUTOMATION_KEY is not configured' });
+      return;
+    }
+
+    const requestKey = req.get('x-automation-key') ?? '';
+    if (requestKey !== configuredKey) {
+      logger.warn('getUsedXNewsSources forbidden', { ip: getClientIp(req) });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    try {
+      const cutoffDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+      const snap = await db
+        .collection('xUsedNewsSources')
+        .where('usedAt', '>=', cutoffDate)
+        .orderBy('usedAt', 'desc')
+        .limit(200)
+        .get();
+
+      const usedSources = snap.docs.map((docSnap) => {
+        const data = docSnap.data() ?? {};
+        const usedAt = data.usedAt && typeof data.usedAt.toDate === 'function'
+          ? data.usedAt.toDate().toISOString()
+          : null;
+
+        return {
+          sourceUrl: normalizeOptionalText(data.sourceUrl, 400),
+          headline: normalizeOptionalText(data.headline, 160),
+          sourceType: normalizeOptionalText(data.sourceType, 40),
+          usedAt,
+        };
+      });
+
+      const usedUrls = Array.from(
+        new Set(usedSources.map((item) => item.sourceUrl).filter(Boolean))
+      );
+      const usedHeadlines = Array.from(
+        new Set(usedSources.map((item) => item.headline).filter(Boolean))
+      );
+
+      res.status(200).json({
+        ok: true,
+        usedUrls,
+        usedHeadlines,
+        usedSources,
+      });
+    } catch (err) {
+      logger.error('getUsedXNewsSources failed', err);
+      res.status(500).json({ error: 'getUsedXNewsSources failed' });
     }
   }
 );

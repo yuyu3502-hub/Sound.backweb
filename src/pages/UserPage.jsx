@@ -3,10 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   collection, query, where, orderBy, getDocs, doc, getDoc, limit, getCountFromServer,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, logAppEvent } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import { PostCard } from '../components/PostCard';
 import { BottomNav } from '../components/BottomNav';
 import { isSpecialSkinUserId } from '../utils/specialAvatar';
+import { fetchReplyCountByPostIds } from '../utils/replyCountCache';
+import { openUserOnX, shareOrCopyUser } from '../utils/sharePost';
+import { buildAuthPath } from '../utils/authLinks';
 import './UserPage.css';
 
 const USER_POSTS_LIMIT = 60;
@@ -20,19 +24,53 @@ function formatDate(timestamp) {
 export function UserPage() {
   const { uid } = useParams();
   const navigate = useNavigate();
+  const { firebaseUser } = useAuth();
 
   const [userData, setUserData] = useState(null);
   const [posts, setPosts] = useState([]);
   const [bestAnswerCount, setBestAnswerCount] = useState(0);
+  const [replyCountByPostId, setReplyCountByPostId] = useState({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [playingId, setPlayingId] = useState(null);
+  const [profileShareState, setProfileShareState] = useState('idle');
 
   useEffect(() => {
     if (!uid) return;
     loadUser();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchReplyCounts = async () => {
+      const postIds = posts.map((post) => post.id).filter(Boolean);
+      if (postIds.length === 0) {
+        if (!cancelled) setReplyCountByPostId({});
+        return;
+      }
+
+      try {
+        const countByPostId = await fetchReplyCountByPostIds(db, postIds);
+        if (!cancelled) setReplyCountByPostId(countByPostId);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchReplyCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [posts]);
+
+  useEffect(() => {
+    if (profileShareState === 'idle') return undefined;
+    const timeoutId = window.setTimeout(() => setProfileShareState('idle'), 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [profileShareState]);
 
   const loadUser = async () => {
     setLoading(true);
@@ -74,6 +112,57 @@ export function UserPage() {
 
   const unsolved = posts.filter((p) => !p.isSolved);
   const solved = posts.filter((p) => p.isSolved);
+
+  const logProfileShare = (channel, result) => {
+    logAppEvent('profile_share_click', {
+      profile_uid: userData?.uid ?? uid,
+      channel,
+      surface: 'user_profile',
+      result,
+      signed_in: Boolean(firebaseUser),
+      post_count: posts.length,
+      unsolved_count: unsolved.length,
+      best_answer_count: bestAnswerCount,
+    });
+  };
+
+  const handleShareProfile = async () => {
+    const result = await shareOrCopyUser(userData);
+    logProfileShare('native_or_copy', result);
+    if (result === 'copied') setProfileShareState('copied');
+    if (result === 'failed') setProfileShareState('failed');
+  };
+
+  const handleShareProfileOnX = () => {
+    const opened = openUserOnX(userData);
+    logProfileShare('x', opened ? 'opened' : 'failed');
+  };
+
+  const handleReplyIntent = (post) => {
+    if (!post?.id) return;
+
+    logAppEvent('feed_reply_cta_click', {
+      post_id: post.id,
+      surface: 'user_profile_card',
+      signed_in: Boolean(firebaseUser),
+      profile_uid: userData?.uid ?? uid,
+      reply_count: replyCountByPostId[post.id] ?? 0,
+      has_audio: Boolean(post.audioUrl),
+    });
+
+    const returnTo = `/post/${post.id}?comment=1`;
+    if (firebaseUser) {
+      navigate(returnTo);
+      return;
+    }
+
+    navigate(buildAuthPath({ returnTo }), {
+      state: {
+        message: 'コメントするには無料登録が必要です。',
+        returnTo,
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -133,6 +222,22 @@ export function UserPage() {
                 ★ ベストアンサー {bestAnswerCount}回
               </span>
             )}
+            <div className="user-profile__actions" aria-label="プロフィール共有">
+              <button
+                type="button"
+                className="user-profile__action-btn"
+                onClick={handleShareProfile}
+              >
+                {profileShareState === 'copied' ? 'URLコピー済み' : profileShareState === 'failed' ? '共有失敗' : 'プロフィール共有'}
+              </button>
+              <button
+                type="button"
+                className="user-profile__action-btn user-profile__action-btn--x"
+                onClick={handleShareProfileOnX}
+              >
+                Xで紹介
+              </button>
+            </div>
           </div>
         </section>
 
@@ -153,6 +258,9 @@ export function UserPage() {
                     post={post}
                     isPlaying={playingId === post.id}
                     onPlay={(id) => setPlayingId(id)}
+                    showSolvedBadge
+                    replyCount={replyCountByPostId[post.id] ?? 0}
+                    onReplyIntent={handleReplyIntent}
                   />
                   <p className="user-posts-date">{formatDate(post.createdAt)}</p>
                 </div>
@@ -178,6 +286,9 @@ export function UserPage() {
                     post={post}
                     isPlaying={playingId === post.id}
                     onPlay={(id) => setPlayingId(id)}
+                    showSolvedBadge
+                    replyCount={replyCountByPostId[post.id] ?? 0}
+                    onReplyIntent={handleReplyIntent}
                   />
                   <p className="user-posts-date">{formatDate(post.createdAt)}</p>
                 </div>
