@@ -2,14 +2,29 @@
   "name": "Sound.back",
   "short_name": "Sound.back",
   "description": "音楽制作の悩みを音源つきで相談できるコミュニティ。",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/?source=homescreen",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait",
   "background_color": "#0b0f11",
   "theme_color": "#0b0f11",
   "lang": "ja",
   "categories": ["music", "productivity", "social"],
   "icons": [
+    {
+      "src": "/app-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon.svg",
       "sizes": "any",
